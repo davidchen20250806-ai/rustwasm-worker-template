@@ -1,5 +1,5 @@
 [package]
-name = "{{project-name}}"
+name = "my-rust-worker"
 version = "0.1.0"
 authors = ["{{authors}}"]
 edition = "2018"
@@ -11,16 +11,32 @@ crate-type = ["cdylib", "rlib"]
 default = ["console_error_panic_hook"]
 
 [dependencies]
-cfg-if = "0.1.2"
-worker = "0.0.9"
+cfg-if = "1.0.4"
+worker = "0.7.4"
 serde_json = "1.0.67"
-
-# The `console_error_panic_hook` crate provides better debugging of panics by
-# logging them with `console.error`. This is great for development, but requires
-# all the `std::fmt` and `std::panicking` infrastructure, so isn't great for
-# code size when deploying.
+serde = { version = "1.0.67", features = ["derive"] }
 console_error_panic_hook = { version = "0.1.1", optional = true }
 
+# 👇 这些是工具库
+base64 = "0.21"    # 建议用 0.21，兼容性最好
+md5 = "0.7"        # 建议降回 0.7，0.8 有时候 API 变了
+hex = "0.4"
+
+# 👇 【关键修改】这两个必须成对降级！
+rand = "0.8"       # 降级到 0.8
+getrandom = { version = "0.2", features = ["js"] } # 配合 rand 0.8 使用 0.2 版，这是唯一支持 features=["js"] 的稳定组合
+uuid = { version = "1.0", features = ["v4", "fast-rng", "js"] }
+chrono = { version = "0.4", features = ["serde"] }
+csscolorparser = "0.6"
+serde_yaml = "0.9" # 处理 YAML
+toml = "0.8"       # 处理 TOML
+url = "2.5"  # 👈 新增：处理 URL
+percent-encoding = "2.3"
+qrcode = "0.12"
+ipnetwork = "0.20"
 [profile.release]
 # Tell `rustc` to optimize for small code size.
 opt-level = "s"
+# 添加到文件末尾
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
