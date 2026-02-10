@@ -6,6 +6,9 @@ pub fn get_homepage() -> &'static str {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rust 极客工具箱 - 在线开发者实用工具集</title>
+    <meta name="description" content="免费在线开发者工具箱，提供 JWT 解析, UUID 生成, Token 生成, 时间戳转换, 颜色提取, Base64, MD5, JSON 格式化, YAML 转 TOML, 二维码生成等 Rust 高性能工具。">
+    <meta name="google-site-verification" content="udcr95cFCSGcY_tu2UQoPK-7ygIkH_ARtI_Vi4DguhM" />
+    <meta name="msvalidate.01" content="28230D5CF5CF4D57C17D65DB9628DDBA" />
     <style>
         /* --- 全局样式 --- */
         * { box-sizing: border-box; margin: 0; padding: 0; outline: none; }
@@ -43,7 +46,6 @@ pub fn get_homepage() -> &'static str {
         textarea:focus, input:focus, select:focus { outline: 2px solid #0ea5e9; border-color: transparent; }
         textarea { resize: vertical; min-height: 80px; }
         
-        /* 按钮样式修正：强制不换行 */
         button.action-btn { background-color: #0ea5e9; color: white; border: none; padding: 10px 24px; border-radius: 6px; cursor: pointer; margin-right: 10px; font-size: 14px; transition: background 0.2s; white-space: nowrap; flex-shrink: 0; }
         button.action-btn:hover { background-color: #0284c7; }
         button.secondary { background-color: #64748b; }
@@ -153,6 +155,7 @@ pub fn get_homepage() -> &'static str {
             <div class="menu-group">
                 <div class="menu-category" onclick="toggleGroup(this)"><span>🔐 加密 & 安全</span><span class="menu-arrow">▼</span></div>
                 <ul class="menu-list">
+                    <li><a class="menu-link" onclick="switchTool('jwt', this)"><span class="menu-icon">🛡️</span>JWT 解析</a></li>
                     <li><a class="menu-link" onclick="switchTool('password', this)"><span class="menu-icon">🔑</span>强密码生成</a></li>
                     <li><a class="menu-link" onclick="switchTool('hash', this)"><span class="menu-icon">#️⃣</span>哈希计算 (MD5)</a></li>
                     <li><a class="menu-link" onclick="switchTool('jsenc', this)"><span class="menu-icon">🛡️</span>JS 加密/混淆</a></li>
@@ -257,6 +260,28 @@ pub fn get_homepage() -> &'static str {
                  <div class="result-box-container"><div class="info-label">16 (小)</div><div class="result-text" id="md5-16-lower"></div><button class="copy-btn" onclick="copyText('md5-16-lower', this)"><svg class="icon"><use href="#icon-copy-svg"></use></svg></button></div>
                  <div class="result-box-container"><div class="info-label">16 (大)</div><div class="result-text" id="md5-16-upper"></div><button class="copy-btn" onclick="copyText('md5-16-upper', this)"><svg class="icon"><use href="#icon-copy-svg"></use></svg></button></div>
              </div>
+        </div>
+
+        <div id="jwt" class="tool-panel">
+            <h2>🛡️ JWT 解析器</h2>
+            <p class="tool-desc">输入 JWT 令牌，解析并查看其 Header 和 Payload 内容。</p>
+            <div class="converter-box" style="height: auto; margin-bottom: 20px;">
+                <div class="converter-label">Encoded Token</div>
+                <div class="textarea-wrapper">
+                    <textarea id="jwt-input" class="code-editor" style="height:100px;" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."></textarea>
+                </div>
+            </div>
+            <button class="action-btn" style="margin-bottom: 20px; width: 100%;" onclick="parseJwt()">🔍 解析 Token</button>
+            <div class="converter-container">
+                <div class="converter-box">
+                    <div class="converter-label">Header</div>
+                    <div class="textarea-wrapper"><textarea id="jwt-header" class="code-editor" readonly></textarea><button class="copy-btn" onclick="copyText('jwt-header', this)"><svg class="icon"><use href="#icon-copy-svg"></use></svg></button></div>
+                </div>
+                <div class="converter-box">
+                    <div class="converter-label">Payload</div>
+                    <div class="textarea-wrapper"><textarea id="jwt-payload" class="code-editor" readonly></textarea><button class="copy-btn" onclick="copyText('jwt-payload', this)"><svg class="icon"><use href="#icon-copy-svg"></use></svg></button></div>
+                </div>
+            </div>
         </div>
 
         <div id="jsenc" class="tool-panel">
@@ -503,6 +528,22 @@ pub fn get_homepage() -> &'static str {
             const dl=document.getElementById('qr-download');dl.href=c.toDataURL();dl.style.display='block';showToast('二维码生成成功');
         };}catch(e){}}
         
+        // --- JWT Parser ---
+        async function parseJwt() {
+            let v = document.getElementById('jwt-input').value;
+            if(!v) return showToast('请输入 JWT', 'error');
+            try {
+                let d = await post('/api/jwt', {token: v});
+                if(d.error) {
+                    showToast(d.error, 'error');
+                } else {
+                    document.getElementById('jwt-header').value = d.header;
+                    document.getElementById('jwt-payload').value = d.payload;
+                    showToast('解析成功');
+                }
+            } catch(e) {}
+        }
+
         // --- Base64/JSON/URL/Token/UUID ---
         async function convertBase64(a){let v=document.getElementById('base64-input').value;if(!v)return;try{let d=await post('/api/base64',{text:v,action:a});document.getElementById('base64-result').innerText=d.result;showToast('转换成功');}catch(e){}}
         async function processJson(m){let v=document.getElementById('json-input').value;if(!v)return;try{let d=await post('/api/json',{input:v});document.getElementById('json-output').value=m==='min'?d.minified:d.pretty;if(d.error)showToast(d.error,'error');else showToast('操作成功');}catch(e){}}
@@ -510,7 +551,7 @@ pub fn get_homepage() -> &'static str {
             let t=document.getElementById('url-params-body');t.innerHTML="";if(d.params.length){d.params.forEach(p=>t.innerHTML+=`<tr><td>${p[0]}</td><td>${p[1]}</td></tr>`)}else{t.innerHTML="<tr><td colspan='2' style='color:#ccc'>无参数</td></tr>"}
             showToast('处理成功');}catch(e){}}
         async function genToken(){try{let d=await post('/api/token',{length:parseInt(document.getElementById('token-len').value),uppercase:document.getElementById('tok-u').checked,lowercase:document.getElementById('tok-l').checked,numbers:document.getElementById('tok-n').checked,symbols:document.getElementById('tok-s').checked});document.getElementById('token-result').innerText=d.token;showToast('生成成功');}catch(e){}}
-        async function generateUuid(){try{let d=await post('/api/uuid',{count:parseInt(document.getElementById('uuid-count').value),hyphens:document.getElementById('uuid-hyp').checked,uppercase:document.getElementById('uuid-up').checked});document.getElementById('uuid-result').value=d.uuids.join('\n');showToast('生成成功');}catch(e){}}
+        async function generateUuid(){try{let d=await post('/api/uuid',{count:parseInt(document.getElementById('uuid-count').value),hyphens:document.getElementById('uuid-hyp').checked,uppercase:document.getElementById('uuid-up').checked});document.getElementById('uuid-result').value=d.uuids.join('\\n');showToast('生成成功');}catch(e){}}
         
         // --- Date/Color/Yaml ---
         function fillNow(){document.getElementById('date-input').value=Math.floor(Date.now()/1000);convertDate()}

@@ -13,7 +13,7 @@ use qrcode::render::svg;
 use std::net::Ipv4Addr;
 use ipnetwork::Ipv4Network;
 use percent_encoding::{percent_decode_str, utf8_percent_encode, NON_ALPHANUMERIC};
-use url::Url; // 👈 补上了这个关键引用！
+use url::Url;
 
 // 1. MD5
 #[derive(Serialize)]
@@ -344,5 +344,44 @@ pub fn calculate_subnet(ip_str: &str, prefix: u8) -> SubnetResponse {
         class: class.to_string(),
         binary_ip: to_binary(ip),
         binary_mask: to_binary(mask),
+    }
+}
+
+// 13. JWT Parser
+#[derive(Serialize)]
+pub struct JwtResponse {
+    pub header: String,
+    pub payload: String,
+    pub error: Option<String>,
+}
+
+pub fn decode_jwt_parts(token: &str) -> JwtResponse {
+    let parts: Vec<&str> = token.split('.').collect();
+    if parts.len() < 2 {
+        return JwtResponse {
+            header: "".into(),
+            payload: "".into(),
+            error: Some("Token 格式无效，找不到 Header 或 Payload".into()),
+        };
+    }
+
+    let decode_part = |part: &str| -> String {
+        // 使用 URL_SAFE_NO_PAD 配置来解码 JWT
+        match general_purpose::URL_SAFE_NO_PAD.decode(part) {
+            Ok(bytes) => match String::from_utf8(bytes) {
+                Ok(s) => match serde_json::from_str::<serde_json::Value>(&s) {
+                    Ok(v) => serde_json::to_string_pretty(&v).unwrap_or(s),
+                    Err(_) => s, // 解析 JSON 失败，直接返回原始字符串
+                },
+                Err(_) => "内容非 UTF-8 格式".to_string(),
+            },
+            Err(_) => "Base64 解码失败".to_string(),
+        }
+    };
+
+    JwtResponse {
+        header: decode_part(parts[0]),
+        payload: decode_part(parts[1]),
+        error: None,
     }
 }

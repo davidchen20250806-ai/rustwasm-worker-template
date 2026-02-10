@@ -92,6 +92,11 @@ struct SubnetRequest {
     cidr: u8,
 }
 
+// 👇 新增：JWT 请求结构
+#[derive(Deserialize)]
+struct JwtRequest {
+    token: String,
+}
 #[event(fetch)]
 pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Response> {
     let router = Router::new();
@@ -225,6 +230,12 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
             } else {
                 Response::error("无效的 IP 地址", 400)
             }
+        })
+        // 👇 新增：JWT 解析接口
+        .post_async("/api/jwt", |mut req, _| async move {
+            let data: JwtRequest = req.json().await?;
+            let response = utils::decode_jwt_parts(&data.token);
+            Response::from_json(&response)
         })
 
         .run(req, env)
