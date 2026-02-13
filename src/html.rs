@@ -5,7 +5,17 @@ pub fn get_homepage() -> &'static str {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rust 极客工具箱</title>
+    <title>Rust 极客工具箱 - 免费在线开发者工具集合 (SQL/Cron/JSON/正则)</title>
+    <meta name="description" content="基于 Rust 构建的高性能在线开发者工具箱。提供 SQL 格式化、Cron 表达式生成、子网掩码计算、文本对比、正则测试、JSON 格式化、Base64 编解码、UUID 生成等多种实用工具，无需下载，即开即用。">
+    <meta name="keywords" content="Rust, 开发者工具, 在线工具, SQL格式化, Cron表达式, 子网计算, 正则测试, JSON格式化, Base64, UUID生成, 程序员工具箱">
+    <meta name="robots" content="index, follow">
+    
+    <!-- Open Graph / Social Sharing -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Rust 极客工具箱 - 免费在线开发者工具集合">
+    <meta property="og:description" content="基于 Rust 构建的高性能在线开发者工具箱。提供 SQL 格式化、Cron 表达式生成、子网掩码计算、文本对比、正则测试、JSON 格式化等多种实用工具。">
+    <meta property="twitter:card" content="summary">
+
     <style>
         :root {
             --primary: #0ea5e9; --primary-hover: #0284c7;
@@ -19,7 +29,10 @@ pub fn get_homepage() -> &'static str {
         /* 布局 */
         .sidebar { width: 260px; background: var(--sidebar-bg); color: #e2e8f0; display: flex; flex-direction: column; border-right: 1px solid #334155; flex-shrink: 0; }
         .logo { padding: 20px; font-weight: bold; font-size: 18px; color: var(--primary); border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .menu { flex: 1; overflow-y: auto; padding: 10px; }
+        .menu { flex: 1; overflow-y: auto; padding: 10px; scrollbar-width: thin; scrollbar-color: #475569 transparent; }
+        .menu::-webkit-scrollbar { width: 6px; }
+        .menu::-webkit-scrollbar-track { background: transparent; }
+        .menu::-webkit-scrollbar-thumb { background-color: #475569; border-radius: 3px; }
         
         .menu-group { margin-bottom: 5px; }
         .menu-cat { 
@@ -339,6 +352,9 @@ pub fn get_homepage() -> &'static str {
     <div id="toast">已复制</div>
     <aside class="sidebar">
         <div class="logo">🦀 Rust 工具箱</div>
+        <div style="padding: 15px 10px 5px;">
+            <input type="text" id="menu-search" placeholder="🔍 搜索工具..." oninput="filterMenu()" style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.1); color:white; padding:10px 12px; font-size:13px; width:100%; box-shadow:none;">
+        </div>
         <div class="menu">
             <div class="menu-group">
                 <div class="menu-cat" onclick="toggleGroup(this)"><span>开发 & 运维</span><span class="menu-arrow">▼</span></div>
@@ -348,16 +364,27 @@ pub fn get_homepage() -> &'static str {
                     <li><a class="link" onclick="nav('subnet', this)"><span class="icon">🌐</span>网络子网计算</a></li>
                     <li><a class="link" onclick="nav('diff', this)"><span class="icon">⚖️</span>文本对比</a></li>
                     <li><a class="link" onclick="nav('regex', this)"><span class="icon">🔍</span>正则测试</a></li>
-                    <li><a class="link" onclick="nav('chmod', this)"><span class="icon">🐧</span>Linux 权限</a></li>
+                </ul>
+            </div>
+            <div class="menu-group">
+                <div class="menu-cat" onclick="toggleGroup(this)"><span>Linux 命令</span><span class="menu-arrow">▼</span></div>
+                <ul class="menu-list">
+                    <li><a class="link" onclick="nav('git', this)"><span class="icon">🎋</span>Git 命令</a></li>
+                    <li><a class="link" onclick="nav('chmod', this)"><span class="icon">🐧</span>权限 (Chmod)</a></li>
+                    <li><a class="link" onclick="nav('tar', this)"><span class="icon">📦</span>压缩 (Tar)</a></li>
+                    <li><a class="link" onclick="nav('ps', this)"><span class="icon">📊</span>进程 (Ps)</a></li>
+                    <li><a class="link" onclick="nav('tcpdump', this)"><span class="icon">📡</span>抓包 (Tcpdump)</a></li>
                 </ul>
             </div>
             <div class="menu-group">
                 <div class="menu-cat" onclick="toggleGroup(this)"><span>文本处理</span><span class="menu-arrow">▼</span></div>
                 <ul class="menu-list">
+                    <li><a class="link" onclick="nav('case', this)"><span class="icon">Aa</span>变量命名转换</a></li>
                     <li><a class="link" onclick="nav('escape', this)"><span class="icon">🔣</span>文本转义</a></li>
                     <li><a class="link" onclick="nav('json', this)"><span class="icon">📋</span>JSON 工具</a></li>
                     <li><a class="link" onclick="nav('base64', this)"><span class="icon">📦</span>Base64 转换</a></li>
                     <li><a class="link" onclick="nav('url', this)"><span class="icon">🔗</span>URL 编解码</a></li>
+                    <li><a class="link" onclick="nav('url-parser', this)"><span class="icon">🧩</span>URL 解析器</a></li>
                     <li><a class="link" onclick="nav('yaml', this)"><span class="icon">⚙️</span>YAML 转 TOML</a></li>
                     <li><a class="link" onclick="nav('toml2yaml', this)"><span class="icon">⚙️</span>TOML 转 YAML</a></li>
                 </ul>
@@ -485,6 +512,53 @@ pub fn get_homepage() -> &'static str {
                 <button class="btn" onclick="doCron()">验证 & 预览</button>
             </div>
             <div class="result-card"><div class="result-label">未来执行时间 (UTC)</div><div class="result-val" id="cron-out" style="white-space:pre-line;">...</div></div>
+        </div>
+
+        <div id="git" class="panel">
+            <h2>Git 命令生成</h2>
+            <div class="row">
+                <select id="git-cmd" onchange="updateGitUI(); doGit()" style="flex:1; font-weight:bold; color:var(--primary)">
+                    <option value="init">初始化 (init)</option>
+                    <option value="clone">克隆 (clone)</option>
+                    <option value="status">状态 (status)</option>
+                    <option value="add">添加文件 (add)</option>
+                    <option value="commit" selected>提交 (commit)</option>
+                    <option value="push">推送 (push)</option>
+                    <option value="pull">拉取 (pull)</option>
+                    <option value="checkout">切换/检出 (checkout)</option>
+                    <option value="merge">合并 (merge)</option>
+                    <option value="log">日志 (log)</option>
+                    <option value="reset">重置 (reset)</option>
+                    <option value="remote">远程仓库 (remote)</option>
+                </select>
+            </div>
+
+            <!-- Dynamic Inputs -->
+            <div class="grid-4" style="margin-bottom:15px">
+                <div id="g-target-box"><div class="cron-label" id="g-target-lbl">目标文件</div><input id="g-target" oninput="doGit()"></div>
+                <div id="g-msg-box"><div class="cron-label">提交信息 (Message)</div><input id="g-msg" placeholder="feat: add new feature" oninput="doGit()"></div>
+                <div id="g-remote-box"><div class="cron-label">远程仓库 (Remote)</div><input id="g-remote" value="origin" oninput="doGit()"></div>
+                <div id="g-branch-box"><div class="cron-label">分支 (Branch)</div><input id="g-branch" value="main" oninput="doGit()"></div>
+            </div>
+
+            <!-- Options Grid -->
+            <div style="margin-bottom:20px; display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:15px; padding:15px; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0;">
+                <label id="opt-all" style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="go-all" onchange="doGit()" style="width:18px;height:18px;accent-color:var(--primary)"> 全部 (-A/-a)</label>
+                <label id="opt-force" style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="go-force" onchange="doGit()" style="width:18px;height:18px;accent-color:var(--primary)"> 强制 (--force)</label>
+                <label id="opt-rebase" style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="go-rebase" onchange="doGit()" style="width:18px;height:18px;accent-color:var(--primary)"> 变基 (--rebase)</label>
+                <label id="opt-amend" style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="go-amend" onchange="doGit()" style="width:18px;height:18px;accent-color:var(--primary)"> 追加 (--amend)</label>
+                <label id="opt-hard" style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="go-hard" onchange="doGit()" style="width:18px;height:18px;accent-color:var(--primary)"> 强制重置 (--hard)</label>
+                <label id="opt-new" style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="go-new" onchange="doGit()" style="width:18px;height:18px;accent-color:var(--primary)"> 新分支 (-b)</label>
+                <label id="opt-tags" style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="go-tags" onchange="doGit()" style="width:18px;height:18px;accent-color:var(--primary)"> 推送标签 (--tags)</label>
+                <label id="opt-oneline" style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="go-oneline" checked onchange="doGit()" style="width:18px;height:18px;accent-color:var(--primary)"> 单行 (--oneline)</label>
+                <label id="opt-graph" style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="go-graph" checked onchange="doGit()" style="width:18px;height:18px;accent-color:var(--primary)"> 图形化 (--graph)</label>
+            </div>
+
+            <div class="result-card">
+                <div class="result-label">Git Command</div>
+                <div id="git-cmd-res" class="result-val" style="font-size:16px; display:flex; align-items:center; min-height:36px; color:var(--primary); font-weight:bold;">git commit -m "..."</div>
+                <button class="icon-btn" onclick="copy('git-cmd-res')"><svg><use href="#i-copy"></use></svg></button>
+            </div>
         </div>
 
         <div id="sql" class="panel active">
@@ -642,6 +716,35 @@ pub fn get_homepage() -> &'static str {
             </div>
         </div>
 
+        <div id="url-parser" class="panel">
+            <h2>URL 解析器</h2>
+            <div class="row">
+                <input id="url-parse-in" oninput="doUrlParse()" placeholder="粘贴完整的 URL, 例如: https://example.com/path?id=123&user=test">
+                <button class="btn" onclick="doUrlParse()">🔍 解析</button>
+            </div>
+            <div id="url-parse-results" style="display:none;">
+                <div style="font-size:12px; color:#64748b; margin-bottom:8px; font-weight:bold; margin-top:20px;">基本组件</div>
+                <div class="info-grid-2">
+                    <div class="info-item"><span class="info-label">协议</span><span id="url-p-protocol" class="info-val">-</span></div>
+                    <div class="info-item"><span class="info-label">主机名</span><span id="url-p-host" class="info-val">-</span></div>
+                    <div class="info-item" style="grid-column: span 2"><span class="info-label">路径</span><span id="url-p-path" class="info-val">-</span></div>
+                </div>
+                <div style="font-size:12px; color:#64748b; margin-bottom:8px; font-weight:bold; margin-top:20px;">查询参数</div>
+                <div class="result-card" style="display:block;">
+                    <table id="url-params-table" style="width:100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="text-align:left; border-bottom: 2px solid var(--border);">
+                                <th style="padding:10px; font-size:13px; color:#6b7280;">参数名 (Key)</th>
+                                <th style="padding:10px; font-size:13px; color:#6b7280;">参数值 (Value)</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                    <div id="url-no-params" style="text-align:center; color:#94a3b8; padding: 20px; display:none;">没有查询参数</div>
+                </div>
+            </div>
+        </div>
+
         <div id="json" class="panel">
             <h2>JSON 工具</h2>
             <div class="editor-container">
@@ -777,6 +880,119 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
             </div>
         </div>
 
+        <div id="tar" class="panel">
+            <h2>Tar 命令生成</h2>
+            <div class="row">
+                <select id="tar-op" onchange="doTar()" style="flex:1">
+                    <option value="create">创建压缩包 (Create)</option>
+                    <option value="extract">解压 (Extract)</option>
+                    <option value="list">查看内容 (List)</option>
+                </select>
+                <select id="tar-comp" onchange="doTar()" style="flex:1">
+                    <option value="none">无压缩 (None)</option>
+                    <option value="gzip" selected>Gzip (.gz)</option>
+                    <option value="bzip2">Bzip2 (.bz2)</option>
+                    <option value="xz">XZ (.xz)</option>
+                </select>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none">
+                    <input type="checkbox" id="tar-v" checked onchange="doTar()" style="width:20px;height:20px"> 详细 (Verbose)
+                </label>
+            </div>
+            <div class="grid-4" style="margin-bottom:20px">
+                <div style="grid-column: span 2"><div class="cron-label">归档文件名</div><input id="tar-arch" placeholder="archive.tar.gz" oninput="doTar()"></div>
+                <div style="grid-column: span 2"><div class="cron-label">源文件 / 目标目录</div><input id="tar-files" placeholder="/path/to/files" oninput="doTar()"></div>
+            </div>
+            <div class="result-card">
+                <div class="result-label">生成的命令</div>
+                <div id="tar-cmd" class="result-val" style="font-size:16px; display:flex; align-items:center; min-height:36px;">tar -czvf archive.tar.gz /path/to/files</div>
+                <button class="icon-btn" onclick="copy('tar-cmd')"><svg><use href="#i-copy"></use></svg></button>
+            </div>
+        </div>
+
+        <div id="ps" class="panel">
+            <h2>Ps 命令生成</h2>
+            <div class="row">
+                <select id="ps-fmt" onchange="doPs()" style="flex:1">
+                    <option value="aux">常用 (aux)</option>
+                    <option value="ef">全格式 (-ef)</option>
+                </select>
+                <select id="ps-sort" onchange="doPs()" style="flex:1">
+                    <option value="none">默认排序</option>
+                    <option value="-%cpu">按 CPU 占用 (降序)</option>
+                    <option value="-%mem">按内存占用 (降序)</option>
+                    <option value="pid">按 PID (升序)</option>
+                </select>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none">
+                    <input type="checkbox" id="ps-tree" onchange="doPs()" style="width:20px;height:20px"> 树状图
+                </label>
+            </div>
+            <div style="margin-bottom:20px">
+                <div class="cron-label">过滤进程名 (Grep)</div>
+                <input id="ps-filter" placeholder="例如: nginx" oninput="doPs()">
+            </div>
+            <div class="result-card">
+                <div class="result-label">生成的命令</div>
+                <div id="ps-cmd" class="result-val" style="font-size:16px; display:flex; align-items:center; min-height:36px;">ps aux</div>
+                <button class="icon-btn" onclick="copy('ps-cmd')"><svg><use href="#i-copy"></use></svg></button>
+            </div>
+        </div>
+
+        <div id="tcpdump" class="panel">
+            <h2>Tcpdump 命令生成</h2>
+            <div class="grid-4" style="margin-bottom:15px">
+                <div><div class="cron-label">网卡接口 (-i)</div><input id="td-if" placeholder="any" oninput="doTcpdump()"></div>
+                <div><div class="cron-label">协议</div><select id="td-proto" onchange="doTcpdump()"><option value="all">全部</option><option value="tcp">TCP</option><option value="udp">UDP</option><option value="icmp">ICMP</option><option value="arp">ARP</option></select></div>
+                <div><div class="cron-label">主机 (Host)</div><input id="td-host" placeholder="192.168.1.1" oninput="doTcpdump()"></div>
+                <div><div class="cron-label">端口 (Port)</div><input id="td-port" placeholder="80" oninput="doTcpdump()"></div>
+            </div>
+            <div class="row" style="margin-bottom:15px; gap:20px">
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none">
+                    <input type="checkbox" id="td-v" onchange="doTcpdump()" style="width:18px;height:18px"> 详细 (-v)
+                </label>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none">
+                    <input type="checkbox" id="td-a" onchange="doTcpdump()" style="width:18px;height:18px"> ASCII (-A)
+                </label>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none">
+                    <input type="checkbox" id="td-x" onchange="doTcpdump()" style="width:18px;height:18px"> Hex (-X)
+                </label>
+            </div>
+            <div class="grid-4" style="margin-bottom:20px">
+                <div style="grid-column: span 3">
+                    <div class="cron-label">保存到文件 (-w)</div>
+                    <input id="td-w" placeholder="capture.pcap (留空则输出到控制台)" oninput="doTcpdump()">
+                </div>
+                <div>
+                    <div class="cron-label">抓包数量 (-c)</div>
+                    <input id="td-c" placeholder="例如: 100" oninput="doTcpdump()">
+                </div>
+            </div>
+            <div class="result-card">
+                <div class="result-label">生成的命令</div>
+                <div id="td-cmd" class="result-val" style="font-size:16px; display:flex; align-items:center; min-height:36px;">tcpdump -i any</div>
+                <button class="icon-btn" onclick="copy('td-cmd')"><svg><use href="#i-copy"></use></svg></button>
+            </div>
+        </div>
+
+        <div id="case" class="panel">
+            <h2>变量命名转换</h2>
+            <div class="row">
+                <select id="case-m" style="flex:1" onchange="doCase()">
+                    <option value="camel">小驼峰 (camelCase)</option>
+                    <option value="pascal">大驼峰 (PascalCase)</option>
+                    <option value="snake">下划线 (snake_case)</option>
+                    <option value="kebab">中划线 (kebab-case)</option>
+                    <option value="constant">常量 (CONSTANT_CASE)</option>
+                    <option value="upper">全大写 (UPPER CASE)</option>
+                    <option value="lower">全小写 (lower case)</option>
+                </select>
+                <button class="btn" onclick="doCase()">转换</button>
+            </div>
+            <div class="editor-container" style="height:200px">
+                <div class="editor-box"><div class="editor-header"><span>输入</span><button class="icon-btn" onclick="setVal('case-in','')"><svg><use href="#i-trash"></use></svg></button></div><textarea id="case-in" class="editor-content" placeholder="输入任意格式，如: user_id, UserInfo, get-data" oninput="doCase()"></textarea></div>
+                <div class="editor-box"><div class="editor-header"><span>结果</span><button class="icon-btn" onclick="copy('case-out')"><svg><use href="#i-copy"></use></svg></button></div><textarea id="case-out" class="editor-content" readonly></textarea></div>
+            </div>
+        </div>
+
     </main>
 
     <script>
@@ -798,6 +1014,22 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
         function copy(id) { const e=document.getElementById(id); const t=e.tagName==='TEXTAREA'||e.tagName==='INPUT'?e.value:e.innerText; if(!t)return toast('无内容', 'error'); navigator.clipboard.writeText(t).then(()=>toast('已复制')); }
         function setVal(id,v) { document.getElementById(id).value=v; }
         async function post(u,d) { try{const r=await fetch('/api'+u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});if(!r.ok)throw await r.text();return await r.json();}catch(e){toast(e, 'error');throw e;} }
+
+        // Menu Filter
+        function filterMenu() {
+            const v = document.getElementById('menu-search').value.toLowerCase();
+            document.querySelectorAll('.link').forEach(l => {
+                const t = l.innerText.toLowerCase();
+                const match = t.includes(v);
+                // 隐藏父级 li 元素以保持布局整洁
+                l.parentElement.style.display = match ? 'block' : 'none';
+            });
+            document.querySelectorAll('.menu-group').forEach(g => {
+                const visible = Array.from(g.querySelectorAll('.link')).some(l => l.parentElement.style.display !== 'none');
+                g.style.display = visible ? 'block' : 'none';
+                if(v && visible) g.classList.remove('collapsed');
+            });
+        }
 
         // Logic
         let qrLogo = null;
@@ -959,6 +1191,53 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
             toast('URL 编解码失败', 'error');
             document.getElementById('url-out').value='';
           }
+        }
+        async function doUrlParse() {
+            const input = document.getElementById('url-parse-in').value;
+            const resultsEl = document.getElementById('url-parse-results');
+            if (!input) {
+                resultsEl.style.display = 'none';
+                return;
+            }
+            try {
+                const d = await post('/url', { input: input });
+                
+                document.getElementById('url-p-protocol').innerText = d.protocol || '-';
+                document.getElementById('url-p-host').innerText = d.host || '-';
+                document.getElementById('url-p-path').innerText = d.path || '-';
+
+                const paramsTable = document.getElementById('url-params-table');
+                const paramsTableBody = paramsTable.querySelector('tbody');
+                const noParamsEl = document.getElementById('url-no-params');
+                paramsTableBody.innerHTML = '';
+
+                if (d.params && d.params.length > 0) {
+                    d.params.forEach(p => {
+                        const row = paramsTableBody.insertRow();
+                        row.style.borderBottom = "1px solid #f0f0f0";
+                        const keyCell = row.insertCell();
+                        keyCell.style.padding = "12px 10px";
+                        keyCell.style.fontFamily = "monospace";
+                        keyCell.style.color = "#334155";
+                        keyCell.textContent = p[0];
+
+                        const valCell = row.insertCell();
+                        valCell.style.padding = "12px 10px";
+                        valCell.style.fontFamily = "monospace";
+                        valCell.style.wordBreak = "break-all";
+                        valCell.textContent = p[1];
+                    });
+                    noParamsEl.style.display = 'none';
+                    paramsTable.style.display = 'table';
+                } else {
+                    noParamsEl.style.display = 'block';
+                    paramsTable.style.display = 'none';
+                }
+                resultsEl.style.display = 'block';
+            } catch (e) {
+                toast('URL 解析失败，请检查格式', 'error');
+                resultsEl.style.display = 'none';
+            }
         }
         async function doJsEnc() { 
           let v=document.getElementById('js-in').value;
@@ -1165,6 +1444,7 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
           }
         }
         async function doEsc() { try{let d=await post('/escape',{text:document.getElementById('esc-in').value,mode:document.getElementById('esc-m').value});document.getElementById('esc-out').value=d.result;}catch(e){} }
+        async function doCase() { let v=document.getElementById('case-in').value; if(!v) return; try{let d=await post('/case',{text:v,mode:document.getElementById('case-m').value});document.getElementById('case-out').value=d.result;}catch(e){} }
         async function convertYaml() { 
           try {
             const yamlInput = document.getElementById('yaml-input').value;
@@ -1209,8 +1489,54 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
         }
         function upChmod(c){let u=(document.getElementById('c_ur').checked?4:0)+(document.getElementById('c_uw').checked?2:0)+(document.getElementById('c_ux').checked?1:0),g=(document.getElementById('c_gr').checked?4:0)+(document.getElementById('c_gw').checked?2:0)+(document.getElementById('c_gx').checked?1:0),o=(document.getElementById('c_or').checked?4:0)+(document.getElementById('c_ow').checked?2:0)+(document.getElementById('c_ox').checked?1:0);if(c)document.getElementById('chmod-octal').value=""+u+g+o;else{let v=document.getElementById('chmod-octal').value;if(v.length===3){let n=v.split('').map(Number);if(n.every(x=>x>=0&&x<=7)){u=n[0];g=n[1];o=n[2];document.getElementById('c_ur').checked=u&4;document.getElementById('c_uw').checked=u&2;document.getElementById('c_ux').checked=u&1;document.getElementById('c_gr').checked=g&4;document.getElementById('c_gw').checked=g&2;document.getElementById('c_gx').checked=g&1;document.getElementById('c_or').checked=o&4;document.getElementById('c_ow').checked=o&2;document.getElementById('c_ox').checked=o&1}}}fetchChmod(document.getElementById('chmod-octal').value)}
         async function fetchChmod(o){try{let d=await post('/chmod',{octal:o});if(d.valid)document.getElementById('chmod-command').innerText=d.command;}catch(e){} }
+        async function doTar() { try{let d=await post('/tar',{op:document.getElementById('tar-op').value,comp:document.getElementById('tar-comp').value,verbose:document.getElementById('tar-v').checked,archive:document.getElementById('tar-arch').value,files:document.getElementById('tar-files').value});document.getElementById('tar-cmd').innerText=d.command;}catch(e){} }
+        async function doPs() { try{let d=await post('/ps',{format:document.getElementById('ps-fmt').value,sort:document.getElementById('ps-sort').value,tree:document.getElementById('ps-tree').checked,filter:document.getElementById('ps-filter').value});document.getElementById('ps-cmd').innerText=d.command;}catch(e){} }
+        async function doTcpdump() { try{let d=await post('/tcpdump',{interface:document.getElementById('td-if').value,protocol:document.getElementById('td-proto').value,host:document.getElementById('td-host').value,port:document.getElementById('td-port').value,verbose:document.getElementById('td-v').checked,ascii:document.getElementById('td-a').checked,hex:document.getElementById('td-x').checked,write_file:document.getElementById('td-w').value,count:document.getElementById('td-c').value});document.getElementById('td-cmd').innerText=d.command;}catch(e){} }
+        
+        function updateGitUI() {
+            const c = document.getElementById('git-cmd').value;
+            const show = (id, v) => document.getElementById(id).style.display = v ? '' : 'none';
+            const lbl = (t) => document.getElementById('g-target-lbl').innerText = t;
+            
+            // Defaults
+            show('g-target-box', false); show('g-msg-box', false); show('g-remote-box', false); show('g-branch-box', false);
+            ['all','force','rebase','amend','hard','new','tags','oneline','graph'].forEach(k => show('opt-'+k, false));
 
-        window.onload = () => { fillTime(); upCron(); upChmod(true); };
+            if(c==='init') { show('g-target-box',true); lbl('目录 (可选)'); }
+            if(c==='clone') { show('g-target-box',true); lbl('仓库 URL'); }
+            if(c==='add') { show('g-target-box',true); lbl('文件路径'); show('opt-all',true); }
+            if(c==='commit') { show('g-msg-box',true); show('opt-all',true); show('opt-amend',true); }
+            if(c==='push') { show('g-remote-box',true); show('g-branch-box',true); show('opt-force',true); show('opt-tags',true); }
+            if(c==='pull') { show('g-remote-box',true); show('g-branch-box',true); show('opt-rebase',true); }
+            if(c==='checkout') { show('g-target-box',true); lbl('分支名 / Commit'); show('opt-new',true); }
+            if(c==='merge') { show('g-target-box',true); lbl('要合并的分支'); }
+            if(c==='log') { show('opt-oneline',true); show('opt-graph',true); }
+            if(c==='reset') { show('g-target-box',true); lbl('Commit Hash'); show('opt-hard',true); }
+            if(c==='remote') { show('g-target-box',true); lbl('仓库 URL'); show('g-remote-box',true); }
+        }
+        async function doGit() {
+            try {
+                let d = await post('/git', {
+                    cmd: document.getElementById('git-cmd').value,
+                    target: document.getElementById('g-target').value,
+                    msg: document.getElementById('g-msg').value,
+                    remote: document.getElementById('g-remote').value,
+                    branch: document.getElementById('g-branch').value,
+                    opt_force: document.getElementById('go-force').checked,
+                    opt_rebase: document.getElementById('go-rebase').checked,
+                    opt_all: document.getElementById('go-all').checked,
+                    opt_amend: document.getElementById('go-amend').checked,
+                    opt_hard: document.getElementById('go-hard').checked,
+                    opt_new_branch: document.getElementById('go-new').checked,
+                    opt_tags: document.getElementById('go-tags').checked,
+                    opt_oneline: document.getElementById('go-oneline').checked,
+                    opt_graph: document.getElementById('go-graph').checked
+                });
+                document.getElementById('git-cmd-res').innerText = d.command;
+            } catch(e) {}
+        }
+
+        window.onload = () => { fillTime(); upCron(); upChmod(true); doTar(); doPs(); doTcpdump(); updateGitUI(); doGit(); };
     </script>
 </body>
 </html>

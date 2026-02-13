@@ -382,11 +382,21 @@ pub fn process_base64(text: &str, action: &str) -> String {
 }
 
 // --- 10. URL ---
-pub fn process_url(input: &str) -> (String, String, String, String, Vec<(String, String)>) {
+pub fn process_url(
+    input: &str,
+) -> (
+    String,
+    String,
+    String,
+    String,
+    String,
+    Vec<(String, String)>,
+) {
     let decoded = percent_decode_str(input).decode_utf8_lossy().to_string();
     let encoded = utf8_percent_encode(input, NON_ALPHANUMERIC).to_string();
 
     // Default to decoding behavior for analysis
+    let mut protocol = "-".to_string();
     let mut host = "-".to_string();
     let mut path = "-".to_string();
     let mut params = vec![];
@@ -398,6 +408,7 @@ pub fn process_url(input: &str) -> (String, String, String, String, Vec<(String,
         format!("http://{}", input)
     };
     if let Ok(u) = Url::parse(&url_to_parse) {
+        protocol = u.scheme().to_string();
         if let Some(h) = u.host_str() {
             host = h.to_string();
         }
@@ -406,7 +417,7 @@ pub fn process_url(input: &str) -> (String, String, String, String, Vec<(String,
             params.push((k.to_string(), v.to_string()));
         }
     }
-    (encoded, decoded, host, path, params)
+    (encoded, decoded, protocol, host, path, params)
 }
 
 // --- 11. JSON ---
@@ -609,4 +620,356 @@ pub fn parse_jwt(token: &str) -> JwtResponse {
         header: decode(parts[0]),
         payload: decode(parts[1]),
     }
+}
+
+// --- 20. Case Converter ---
+pub fn convert_case(text: &str, mode: &str) -> String {
+    // 1. 预处理：将下划线、中划线替换为空格
+    let s = text.replace('_', " ").replace('-', " ");
+
+    // 2. 处理驼峰：在小写字母和大写字母之间插入空格 (例如 camelCase -> camel Case)
+    // 使用 lazy_static 或在函数内编译 regex (对于 worker 这种短生命周期，直接编译也可接受，或者用 lazy_static 优化)
+    // 这里为了简单直接编译，性能影响微乎其微
+    let re = Regex::new(r"(?P<lower>[a-z])(?P<upper>[A-Z])").unwrap();
+    let s = re.replace_all(&s, "$lower $upper");
+
+    let words: Vec<&str> = s.split_whitespace().collect();
+
+    match mode {
+        "upper" => words.join(" ").to_uppercase(),
+        "lower" => words.join(" ").to_lowercase(),
+        "snake" => words.join("_").to_lowercase(),
+        "kebab" => words.join("-").to_lowercase(),
+        "constant" => words.join("_").to_uppercase(),
+        "camel" => words
+            .iter()
+            .enumerate()
+            .map(|(i, w)| {
+                let w = w.to_lowercase();
+                if i == 0 {
+                    w
+                } else {
+                    let mut c = w.chars();
+                    match c.next() {
+                        None => String::new(),
+                        Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
+                    }
+                }
+            })
+            .collect(),
+        "pascal" => words
+            .iter()
+            .map(|w| {
+                let w = w.to_lowercase();
+                let mut c = w.chars();
+                match c.next() {
+                    None => String::new(),
+                    Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
+                }
+            })
+            .collect(),
+        _ => text.to_string(),
+    }
+}
+
+// --- 21. Tar Command ---
+#[derive(Serialize)]
+pub struct TarResponse {
+    pub command: String,
+}
+pub fn generate_tar(
+    op: &str,
+    comp: &str,
+    verbose: bool,
+    archive: &str,
+    files: &str,
+) -> TarResponse {
+    let mut cmd = String::from("tar -");
+    match op {
+        "extract" => cmd.push('x'),
+        "list" => cmd.push('t'),
+        _ => cmd.push('c'),
+    }
+    match comp {
+        "gzip" => cmd.push('z'),
+        "bzip2" => cmd.push('j'),
+        "xz" => cmd.push('J'),
+        _ => {}
+    }
+    if verbose {
+        cmd.push('v');
+    }
+    cmd.push('f');
+    cmd.push(' ');
+
+    let arch = if archive.trim().is_empty() {
+        match comp {
+            "gzip" => "archive.tar.gz",
+            "bzip2" => "archive.tar.bz2",
+            "xz" => "archive.tar.xz",
+            _ => "archive.tar",
+        }
+    } else {
+        archive.trim()
+    };
+    cmd.push_str(arch);
+
+    if !files.trim().is_empty() {
+        if op == "extract" {
+            cmd.push_str(" -C ");
+        } else {
+            cmd.push(' ');
+        }
+        cmd.push_str(files.trim());
+    }
+
+    TarResponse { command: cmd }
+}
+
+// --- 22. Ps Command ---
+#[derive(Serialize)]
+pub struct PsResponse {
+    pub command: String,
+}
+pub fn generate_ps(format: &str, sort: &str, tree: bool, filter: &str) -> PsResponse {
+    let mut cmd = String::from("ps");
+
+    match format {
+        "ef" => {
+            cmd.push_str(" -ef");
+            if tree {
+                cmd.push_str(" --forest");
+            }
+        }
+        _ => {
+            // Default to aux
+            cmd.push_str(" aux");
+            if tree {
+                cmd.push('f');
+            }
+        }
+    }
+
+    if !sort.is_empty() && sort != "none" {
+        cmd.push_str(" --sort=");
+        cmd.push_str(sort);
+    }
+
+    if !filter.trim().is_empty() {
+        cmd.push_str(" | grep ");
+        cmd.push_str(filter.trim());
+    }
+
+    PsResponse { command: cmd }
+}
+
+// --- 23. Tcpdump Command ---
+#[derive(Serialize)]
+pub struct TcpdumpResponse {
+    pub command: String,
+}
+pub fn generate_tcpdump(
+    interface: &str,
+    protocol: &str,
+    host: &str,
+    port: &str,
+    verbose: bool,
+    ascii: bool,
+    hex: bool,
+    write_file: &str,
+    count: &str,
+) -> TcpdumpResponse {
+    let mut cmd = String::from("tcpdump");
+
+    // Interface
+    if !interface.trim().is_empty() {
+        cmd.push_str(" -i ");
+        cmd.push_str(interface.trim());
+    } else {
+        cmd.push_str(" -i any");
+    }
+
+    // Options
+    // If writing to file, display options might not be needed, but we keep them if user wants
+    if !write_file.trim().is_empty() {
+        cmd.push_str(" -w ");
+        cmd.push_str(write_file.trim());
+    } else {
+        if verbose {
+            cmd.push_str(" -v");
+        }
+        if ascii {
+            cmd.push_str(" -A");
+        }
+        if hex {
+            cmd.push_str(" -X");
+        }
+    }
+
+    if !count.trim().is_empty() {
+        cmd.push_str(" -c ");
+        cmd.push_str(count.trim());
+    }
+
+    // Filters
+    let mut filters = Vec::new();
+    if !protocol.trim().is_empty() && protocol != "all" {
+        filters.push(protocol.trim().to_string());
+    }
+    if !host.trim().is_empty() {
+        filters.push(format!("host {}", host.trim()));
+    }
+    if !port.trim().is_empty() {
+        filters.push(format!("port {}", port.trim()));
+    }
+
+    if !filters.is_empty() {
+        cmd.push_str(" \"");
+        cmd.push_str(&filters.join(" and "));
+        cmd.push('"');
+    }
+
+    TcpdumpResponse { command: cmd }
+}
+
+// --- 24. Git Command ---
+#[derive(Serialize)]
+pub struct GitResponse {
+    pub command: String,
+}
+pub fn generate_git(
+    cmd: &str,
+    target: &str,
+    msg: &str,
+    remote: &str,
+    branch: &str,
+    opt_force: bool,
+    opt_rebase: bool,
+    opt_all: bool,
+    opt_amend: bool,
+    opt_hard: bool,
+    opt_new_branch: bool,
+    opt_tags: bool,
+    opt_oneline: bool,
+    opt_graph: bool,
+) -> GitResponse {
+    let mut c = String::from("git");
+    c.push(' ');
+    c.push_str(cmd);
+
+    match cmd {
+        "init" => {
+            if !target.trim().is_empty() {
+                c.push(' ');
+                c.push_str(target.trim());
+            }
+        }
+        "clone" => {
+            if !target.trim().is_empty() {
+                c.push(' ');
+                c.push_str(target.trim());
+            }
+        }
+        "add" => {
+            if opt_all {
+                c.push_str(" -A");
+            } else if !target.trim().is_empty() {
+                c.push(' ');
+                c.push_str(target.trim());
+            } else {
+                c.push_str(" .");
+            }
+        }
+        "commit" => {
+            if opt_all {
+                c.push_str(" -a");
+            }
+            if opt_amend {
+                c.push_str(" --amend");
+            }
+            if !msg.trim().is_empty() {
+                c.push_str(" -m \"");
+                c.push_str(&msg.replace('"', "\\\""));
+                c.push('"');
+            }
+        }
+        "push" => {
+            if opt_force {
+                c.push_str(" --force");
+            }
+            if opt_tags {
+                c.push_str(" --tags");
+            }
+            if !remote.trim().is_empty() {
+                c.push(' ');
+                c.push_str(remote.trim());
+            }
+            if !branch.trim().is_empty() {
+                c.push(' ');
+                c.push_str(branch.trim());
+            }
+        }
+        "pull" => {
+            if opt_rebase {
+                c.push_str(" --rebase");
+            }
+            if !remote.trim().is_empty() {
+                c.push(' ');
+                c.push_str(remote.trim());
+            }
+            if !branch.trim().is_empty() {
+                c.push(' ');
+                c.push_str(branch.trim());
+            }
+        }
+        "checkout" => {
+            if opt_new_branch {
+                c.push_str(" -b");
+            }
+            if !target.trim().is_empty() {
+                c.push(' ');
+                c.push_str(target.trim());
+            }
+        }
+        "merge" => {
+            if !target.trim().is_empty() {
+                c.push(' ');
+                c.push_str(target.trim());
+            }
+        }
+        "log" => {
+            if opt_oneline {
+                c.push_str(" --oneline");
+            }
+            if opt_graph {
+                c.push_str(" --graph");
+            }
+            c.push_str(" --decorate --all");
+        }
+        "reset" => {
+            if opt_hard {
+                c.push_str(" --hard");
+            }
+            if !target.trim().is_empty() {
+                c.push(' ');
+                c.push_str(target.trim());
+            }
+        }
+        "remote" => {
+            c.push_str(" add ");
+            if !remote.trim().is_empty() {
+                c.push_str(remote.trim());
+            } else {
+                c.push_str("origin");
+            }
+            if !target.trim().is_empty() {
+                c.push(' ');
+                c.push_str(target.trim());
+            }
+        }
+        "status" => {} // No args usually
+        _ => {}
+    }
+
+    GitResponse { command: c }
 }

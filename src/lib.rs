@@ -107,6 +107,55 @@ struct ChmodRequest {
 struct UrlRequest {
     input: String,
 }
+#[derive(Deserialize)]
+struct CaseRequest {
+    text: String,
+    mode: String,
+}
+#[derive(Deserialize)]
+struct TarRequest {
+    op: String,
+    comp: String,
+    verbose: bool,
+    archive: String,
+    files: String,
+}
+#[derive(Deserialize)]
+struct PsRequest {
+    format: String,
+    sort: String,
+    tree: bool,
+    filter: String,
+}
+#[derive(Deserialize)]
+struct TcpdumpRequest {
+    interface: String,
+    protocol: String,
+    host: String,
+    port: String,
+    verbose: bool,
+    ascii: bool,
+    hex: bool,
+    write_file: String,
+    count: String,
+}
+#[derive(Deserialize)]
+struct GitRequest {
+    cmd: String,
+    target: String,
+    msg: String,
+    remote: String,
+    branch: String,
+    opt_force: bool,
+    opt_rebase: bool,
+    opt_all: bool,
+    opt_amend: bool,
+    opt_hard: bool,
+    opt_new_branch: bool,
+    opt_tags: bool,
+    opt_oneline: bool,
+    opt_graph: bool,
+}
 
 #[derive(Serialize)]
 struct GenericResponse {
@@ -128,6 +177,7 @@ struct PasswordResponse {
 struct UrlResponse {
     encoded: String,
     decoded: String,
+    protocol: String,
     host: String,
     path: String,
     params: Vec<(String, String)>,
@@ -221,10 +271,11 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
         })
         .post_async("/api/url", |mut req, _| async move {
             let data: UrlRequest = req.json().await?;
-            let (enc, dec, host, path, params) = utils::process_url(&data.input);
+            let (enc, dec, protocol, host, path, params) = utils::process_url(&data.input);
             Response::from_json(&UrlResponse {
                 encoded: enc,
                 decoded: dec,
+                protocol,
                 host,
                 path,
                 params,
@@ -296,6 +347,63 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
             let data: EscapeRequest = req.json().await?;
             let res = utils::process_escape(&data.text, &data.mode);
             Response::from_json(&GenericResponse { result: res })
+        })
+        .post_async("/api/case", |mut req, _| async move {
+            let data: CaseRequest = req.json().await?;
+            let res = utils::convert_case(&data.text, &data.mode);
+            Response::from_json(&GenericResponse { result: res })
+        })
+        .post_async("/api/tar", |mut req, _| async move {
+            let data: TarRequest = req.json().await?;
+            Response::from_json(&utils::generate_tar(
+                &data.op,
+                &data.comp,
+                data.verbose,
+                &data.archive,
+                &data.files,
+            ))
+        })
+        .post_async("/api/ps", |mut req, _| async move {
+            let data: PsRequest = req.json().await?;
+            Response::from_json(&utils::generate_ps(
+                &data.format,
+                &data.sort,
+                data.tree,
+                &data.filter,
+            ))
+        })
+        .post_async("/api/tcpdump", |mut req, _| async move {
+            let data: TcpdumpRequest = req.json().await?;
+            Response::from_json(&utils::generate_tcpdump(
+                &data.interface,
+                &data.protocol,
+                &data.host,
+                &data.port,
+                data.verbose,
+                data.ascii,
+                data.hex,
+                &data.write_file,
+                &data.count,
+            ))
+        })
+        .post_async("/api/git", |mut req, _| async move {
+            let data: GitRequest = req.json().await?;
+            Response::from_json(&utils::generate_git(
+                &data.cmd,
+                &data.target,
+                &data.msg,
+                &data.remote,
+                &data.branch,
+                data.opt_force,
+                data.opt_rebase,
+                data.opt_all,
+                data.opt_amend,
+                data.opt_hard,
+                data.opt_new_branch,
+                data.opt_tags,
+                data.opt_oneline,
+                data.opt_graph,
+            ))
         })
         .run(req, env)
         .await
