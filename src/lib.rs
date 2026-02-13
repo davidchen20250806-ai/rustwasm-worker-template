@@ -1,35 +1,54 @@
-use worker::*;
 use serde::{Deserialize, Serialize};
-use base64::{Engine as _, engine::general_purpose};
+use worker::*;
 
 mod html;
 mod utils;
 
-// ... 之前的 Base64Request, Md5Request 定义保持不变 ...
 #[derive(Deserialize)]
-struct Base64Request { text: String, action: String }
-#[derive(Serialize)]
-struct Base64Response { result: String }
+struct SqlRequest {
+    sql: String,
+}
 #[derive(Deserialize)]
-struct Md5Request { text: String }
+struct DiffRequest {
+    old: String,
+    new: String,
+}
+#[derive(Deserialize)]
+struct CronRequest {
+    cron: String,
+}
+#[derive(Deserialize)]
+struct SubnetRequest {
+    ip: String,
+    cidr: u8,
+}
+#[derive(Deserialize)]
+struct RegexGenRequest {
+    key: String,
+}
+#[derive(Deserialize)]
+struct RegexRequest {
+    pattern: String,
+    text: String,
+}
 #[derive(Deserialize)]
 struct UuidRequest {
     count: usize,
-    uppercase: bool,
     hyphens: bool,
+    uppercase: bool,
 }
-// 👇 新增：Date 请求参数
 #[derive(Deserialize)]
-
-struct DateRequest {
-    input: String,
+struct JwtRequest {
+    token: String,
 }
-#[derive(Serialize)]
-struct UuidResponse {
-    uuids: Vec<String>,
+#[derive(Deserialize)]
+struct PasswordRequest {
+    length: usize,
+    uppercase: bool,
+    lowercase: bool,
+    numbers: bool,
+    symbols: bool,
 }
-
-// 👇 新增：Token 请求参数
 #[derive(Deserialize)]
 struct TokenRequest {
     length: usize,
@@ -39,205 +58,245 @@ struct TokenRequest {
     symbols: bool,
 }
 #[derive(Deserialize)]
-struct YamlRequest {
-    yaml: String,
+struct Base64Request {
+    text: String,
+    action: String,
 }
-
-// 👇 新增：Token 返回结果
-#[derive(Serialize)]
-struct TokenResponse {
-    token: String,
+#[derive(Deserialize)]
+struct JsonRequest {
+    input: String,
+}
+#[derive(Deserialize)]
+struct EscapeRequest {
+    text: String,
+    mode: String,
+}
+#[derive(Deserialize)]
+struct DateRequest {
+    input: String,
 }
 #[derive(Deserialize)]
 struct ColorRequest {
     input: String,
 }
-
 #[derive(Deserialize)]
-struct TomlRequest {
-    toml: String,
+struct QrRequest {
+    text: String,
 }
-
-// 👇 新增：JS 加密请求参数
 #[derive(Deserialize)]
 struct JsEncRequest {
     js: String,
 }
 #[derive(Deserialize)]
-struct CommonRequest { input: String }
-
-// 👇 新增：密码请求结构
-#[derive(Deserialize)]
-struct PasswordRequest {
-    length: usize,
-    uppercase: bool,
-    lowercase: bool,
-    numbers: bool,
-    symbols: bool,
+struct YamlRequest {
+    yaml: String,
 }
-// 👇 新增：QR 请求结构
 #[derive(Deserialize)]
-struct QrRequest {
+struct TomlRequest {
+    toml: String,
+}
+#[derive(Deserialize)]
+struct Md5Request {
     text: String,
 }
-// 👇 新增：Chmod 请求参数
 #[derive(Deserialize)]
 struct ChmodRequest {
-    octal: String, // 接收 "755"
+    octal: String,
 }
-// 👇 新增：Subnet 请求结构
 #[derive(Deserialize)]
-struct SubnetRequest {
-    ip: String,
-    cidr: u8,
+struct UrlRequest {
+    input: String,
 }
 
-// 👇 新增：JWT 请求结构
-#[derive(Deserialize)]
-struct JwtRequest {
+#[derive(Serialize)]
+struct GenericResponse {
+    result: String,
+}
+#[derive(Serialize)]
+struct UuidResponse {
+    uuids: Vec<String>,
+}
+#[derive(Serialize)]
+struct TokenResponse {
     token: String,
 }
+#[derive(Serialize)]
+struct PasswordResponse {
+    password: String,
+}
+#[derive(Serialize)]
+struct UrlResponse {
+    encoded: String,
+    decoded: String,
+    host: String,
+    path: String,
+    params: Vec<(String, String)>,
+}
+#[derive(Serialize)]
+struct JsonResponse {
+    pretty: String,
+    minified: String,
+    error: Option<String>,
+}
+#[derive(Serialize)]
+struct YamlResponse {
+    result: String,
+    error: Option<String>,
+}
+
 #[event(fetch)]
 pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Response> {
     let router = Router::new();
 
     router
         .get("/", |_, _| Response::from_html(html::get_homepage()))
-        
-        // ... Base64 和 MD5 的路由保持不变 ...
-        .post_async("/api/base64", |mut req, _| async move {
-             let data: Base64Request = req.json().await?;
-             let result = match data.action.as_str() {
-                 "encode" => general_purpose::STANDARD.encode(data.text.as_bytes()),
-                 "decode" => match general_purpose::STANDARD.decode(data.text.as_bytes()) {
-                     Ok(bytes) => String::from_utf8(bytes).unwrap_or("非 UTF-8".into()),
-                     Err(_) => "解码失败".into(),
-                 },
-                 _ => "未知操作".into(),
-             };
-             Response::from_json(&Base64Response { result })
+        .get("/api/ping", |_, _| Response::ok("Pong"))
+        .post_async("/api/sql", |mut req, _| async move {
+            let data: SqlRequest = req.json().await?;
+            let res = utils::format_sql(&data.sql);
+            Response::from_json(&GenericResponse { result: res })
+        })
+        .post_async("/api/diff", |mut req, _| async move {
+            let data: DiffRequest = req.json().await?;
+            Response::from_json(&utils::compute_diff(&data.old, &data.new))
+        })
+        .post_async("/api/cron", |mut req, _| async move {
+            let data: CronRequest = req.json().await?;
+            Response::from_json(&utils::check_cron(&data.cron))
+        })
+        .post_async("/api/subnet", |mut req, _| async move {
+            let data: SubnetRequest = req.json().await?;
+            Response::from_json(&utils::calculate_subnet(&data.ip, data.cidr))
         })
         .post_async("/api/md5", |mut req, _| async move {
             let data: Md5Request = req.json().await?;
-            let response = utils::calculate_md5(&data.text);
-            Response::from_json(&response)
+            Response::from_json(&utils::calculate_md5(&data.text))
         })
-
-        // 👇 新增：Token 生成接口
         .post_async("/api/token", |mut req, _| async move {
             let data: TokenRequest = req.json().await?;
-            // 限制一下最大长度，防止恶意请求卡死服务器
-            let len = if data.length > 1024 { 1024 } else { data.length };
-            
-            let token = utils::generate_token(len, data.uppercase, data.lowercase, data.numbers, data.symbols);
+            let token = utils::generate_token(
+                data.length,
+                data.uppercase,
+                data.lowercase,
+                data.numbers,
+                data.symbols,
+            );
             Response::from_json(&TokenResponse { token })
         })
         .post_async("/api/uuid", |mut req, _| async move {
             let data: UuidRequest = req.json().await?;
-            // 限制最大生成数量，防止卡死
-            let count = if data.count > 100 { 100 } else { data.count };
-            
             let uuids = utils::generate_uuids(utils::UuidConfig {
-                count,
-                uppercase: data.uppercase,
+                count: data.count,
                 hyphens: data.hyphens,
+                uppercase: data.uppercase,
             });
-            
-            
             Response::from_json(&UuidResponse { uuids })
         })
         .post_async("/api/date", |mut req, _| async move {
             let data: DateRequest = req.json().await?;
-            
-            match utils::parse_date(&data.input) {
-                Ok(response) => Response::from_json(&response),
-                Err(e) => Response::error(e, 400),
-            }
+            Response::from_json(&utils::parse_date(&data.input))
         })
         .post_async("/api/color", |mut req, _| async move {
             let data: ColorRequest = req.json().await?;
-            let response = utils::convert_color(&data.input);
-            if response.valid {
-                Response::from_json(&response)
-            } else {
-                Response::error("无效的颜色值", 400)
-            }
+            Response::from_json(&utils::convert_color(&data.input))
         })
-
-        .post_async("/api/yaml-to-toml", |mut req, _| async move {
-            let data: YamlRequest = req.json().await?;
-            let response = utils::yaml_to_toml(&data.yaml);
-            Response::from_json(&response)
-        })
-        // 👇 新增：TOML 转 YAML 接口
-        .post_async("/api/toml-to-yaml", |mut req, _| async move {
-            let data: TomlRequest = req.json().await?;
-            let response = utils::toml_to_yaml(&data.toml);
-            Response::from_json(&response)
+        .post_async("/api/base64", |mut req, _| async move {
+            let data: Base64Request = req.json().await?;
+            let res = utils::process_base64(&data.text, &data.action);
+            Response::from_json(&GenericResponse { result: res })
         })
         .post_async("/api/js-enc", |mut req, _| async move {
             let data: JsEncRequest = req.json().await?;
-            let response = utils::obfuscate_js(&data.js);
-            Response::from_json(&response)
+            let res = utils::obfuscate_js(&data.js);
+            Response::from_json(&GenericResponse { result: res })
         })
         .post_async("/api/json", |mut req, _| async move {
-            let data: CommonRequest = req.json().await?;
-            let response = utils::process_json(&data.input);
-            Response::from_json(&response)
+            let data: JsonRequest = req.json().await?;
+            let (pretty, min, err) = utils::process_json(&data.input);
+            Response::from_json(&JsonResponse {
+                pretty,
+                minified: min,
+                error: err,
+            })
         })
-        
-        // 👇 新增：URL 接口
         .post_async("/api/url", |mut req, _| async move {
-            let data: CommonRequest = req.json().await?;
-            let response = utils::process_url(&data.input);
-            Response::from_json(&response)
+            let data: UrlRequest = req.json().await?;
+            let (enc, dec, host, path, params) = utils::process_url(&data.input);
+            Response::from_json(&UrlResponse {
+                encoded: enc,
+                decoded: dec,
+                host,
+                path,
+                params,
+            })
         })
-        // 👇 新增：强密码生成接口
         .post_async("/api/password", |mut req, _| async move {
             let data: PasswordRequest = req.json().await?;
-            // 限制长度 4 ~ 128
-            let len = if data.length < 4 { 4 } else if data.length > 128 { 128 } else { data.length };
-            
-            let response = utils::generate_password_strong(len, data.uppercase, data.lowercase, data.numbers, data.symbols);
-            Response::from_json(&response)
+            let res = utils::generate_password_strong(
+                data.length,
+                data.uppercase,
+                data.lowercase,
+                data.numbers,
+                data.symbols,
+            );
+            Response::from_json(&PasswordResponse { password: res })
         })
         .post_async("/api/qrcode", |mut req, _| async move {
             let data: QrRequest = req.json().await?;
-            if data.text.is_empty() {
-                return Response::error("内容不能为空", 400);
+            let svg = utils::generate_qr(&data.text);
+            // Return raw struct matching frontend expectations { svg: ... }
+            #[derive(Serialize)]
+            struct QrRes {
+                svg: String,
             }
-            
-            match utils::generate_qr_svg(&data.text) {
-                Ok(res) => Response::from_json(&res),
-                Err(e) => Response::error(e, 500),
-            }
+            Response::from_json(&QrRes { svg })
         })
-        // 👇 新增：Linux 权限接口
         .post_async("/api/chmod", |mut req, _| async move {
             let data: ChmodRequest = req.json().await?;
-            let response = utils::calculate_chmod(&data.octal);
-            Response::from_json(&response)
+            Response::from_json(&utils::calculate_chmod(&data.octal))
         })
-        // 👇 新增：子网计算接口
-        .post_async("/api/subnet", |mut req, _| async move {
-            let data: SubnetRequest = req.json().await?;
-            // 简单的防呆，cidr 必须在 0-32 之间
-            let cidr = if data.cidr > 32 { 32 } else { data.cidr };
-            
-            let response = utils::calculate_subnet(&data.ip, cidr);
-            if response.valid {
-                Response::from_json(&response)
-            } else {
-                Response::error("无效的 IP 地址", 400)
-            }
+        .post_async("/api/yaml-to-toml", |mut req, _| async move {
+            let data: YamlRequest = req.json().await?;
+            let (res, err) = utils::yaml_to_toml(&data.yaml);
+            let err_opt = if err.is_empty() { None } else { Some(err) };
+            Response::from_json(&YamlResponse {
+                result: res,
+                error: err_opt,
+            })
         })
-        // 👇 新增：JWT 解析接口
+        .post_async("/api/toml-to-yaml", |mut req, _| async move {
+            let data: TomlRequest = req.json().await?;
+            let (res, err) = utils::toml_to_yaml(&data.toml);
+            let err_opt = if err.is_empty() { None } else { Some(err) };
+            Response::from_json(&YamlResponse {
+                result: res,
+                error: err_opt,
+            })
+        })
         .post_async("/api/jwt", |mut req, _| async move {
             let data: JwtRequest = req.json().await?;
-            let response = utils::decode_jwt_parts(&data.token);
-            Response::from_json(&response)
+            Response::from_json(&utils::parse_jwt(&data.token))
         })
-
+        .post_async("/api/regex", |mut req, _| async move {
+            let data: RegexRequest = req.json().await?;
+            Response::from_json(&utils::test_regex(&data.pattern, &data.text))
+        })
+        .post_async("/api/regex-gen", |mut req, _| async move {
+            let data: RegexGenRequest = req.json().await?;
+            let pat = utils::get_common_regex(&data.key);
+            #[derive(Serialize)]
+            struct PatRes {
+                pattern: String,
+            }
+            Response::from_json(&PatRes {
+                pattern: pat.to_string(),
+            })
+        })
+        .post_async("/api/escape", |mut req, _| async move {
+            let data: EscapeRequest = req.json().await?;
+            let res = utils::process_escape(&data.text, &data.mode);
+            Response::from_json(&GenericResponse { result: res })
+        })
         .run(req, env)
         .await
 }
