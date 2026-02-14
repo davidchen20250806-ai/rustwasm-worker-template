@@ -973,3 +973,382 @@ pub fn generate_git(
 
     GitResponse { command: c }
 }
+
+// --- 25. Strace Command ---
+#[derive(Serialize)]
+pub struct StraceResponse {
+    pub command: String,
+}
+pub fn generate_strace(
+    target: &str,
+    is_pid: bool,
+    follow: bool,
+    summary: bool,
+    output_file: &str,
+    filter: &str,
+    string_limit: &str,
+    timestamp: bool,
+) -> StraceResponse {
+    let mut cmd = String::from("strace");
+
+    if follow {
+        cmd.push_str(" -f");
+    }
+    if summary {
+        cmd.push_str(" -c");
+    }
+    if timestamp {
+        cmd.push_str(" -tt");
+    }
+    if !string_limit.trim().is_empty() {
+        cmd.push_str(" -s ");
+        cmd.push_str(string_limit.trim());
+    }
+    if !output_file.trim().is_empty() {
+        cmd.push_str(" -o ");
+        cmd.push_str(output_file.trim());
+    }
+    if !filter.trim().is_empty() {
+        cmd.push_str(" -e ");
+        cmd.push_str(filter.trim());
+    }
+
+    if !target.trim().is_empty() {
+        cmd.push(' ');
+        if is_pid {
+            cmd.push_str("-p ");
+        }
+        cmd.push_str(target.trim());
+    }
+
+    StraceResponse { command: cmd }
+}
+
+// --- 26. Iostat Command ---
+#[derive(Serialize)]
+pub struct IostatResponse {
+    pub command: String,
+}
+pub fn generate_iostat(
+    interval: &str,
+    count: &str,
+    human: bool,
+    extended: bool,
+    unit: &str,
+    partitions: bool,
+    timestamp: bool,
+    device: &str,
+) -> IostatResponse {
+    let mut cmd = String::from("iostat");
+
+    if human {
+        cmd.push_str(" -h");
+    }
+    if extended {
+        cmd.push_str(" -x");
+    }
+    if timestamp {
+        cmd.push_str(" -t");
+    }
+
+    match unit {
+        "k" => cmd.push_str(" -k"),
+        "m" => cmd.push_str(" -m"),
+        _ => {}
+    }
+
+    if partitions {
+        cmd.push_str(" -p");
+    }
+
+    if !device.trim().is_empty() {
+        cmd.push(' ');
+        cmd.push_str(device.trim());
+    }
+
+    if !interval.trim().is_empty() {
+        cmd.push(' ');
+        cmd.push_str(interval.trim());
+        if !count.trim().is_empty() {
+            cmd.push(' ');
+            cmd.push_str(count.trim());
+        }
+    }
+
+    IostatResponse { command: cmd }
+}
+
+// --- 27. Nice/Renice Command ---
+#[derive(Serialize)]
+pub struct NiceResponse {
+    pub command: String,
+}
+pub fn generate_nice(
+    mode: &str,
+    priority: i32,
+    command: &str,
+    target_type: &str,
+    target: &str,
+) -> NiceResponse {
+    let mut cmd = String::new();
+    // Priority range -20 to 19
+    let prio = priority.max(-20).min(19);
+
+    if mode == "renice" {
+        // renice priority [[-p] pid ...] [[-g] pgrp ...] [[-u] user ...]
+        cmd.push_str("renice -n ");
+        cmd.push_str(&prio.to_string());
+
+        match target_type {
+            "group" => cmd.push_str(" -g"),
+            "user" => cmd.push_str(" -u"),
+            _ => cmd.push_str(" -p"), // default pid
+        }
+
+        if !target.trim().is_empty() {
+            cmd.push(' ');
+            cmd.push_str(target.trim());
+        }
+    } else {
+        // nice -n adjustment [command [arg...]]
+        cmd.push_str("nice -n ");
+        cmd.push_str(&prio.to_string());
+
+        if !command.trim().is_empty() {
+            cmd.push(' ');
+            cmd.push_str(command.trim());
+        }
+    }
+
+    NiceResponse { command: cmd }
+}
+
+// --- 28. Ls Command ---
+#[derive(Serialize)]
+pub struct LsResponse {
+    pub command: String,
+}
+pub fn generate_ls(
+    path: &str,
+    all: bool,
+    long: bool,
+    human: bool,
+    time: bool,
+    reverse: bool,
+    recursive: bool,
+    inode: bool,
+    directory: bool,
+    color: bool,
+) -> LsResponse {
+    let mut cmd = String::from("ls");
+
+    if color {
+        cmd.push_str(" --color=auto");
+    }
+
+    let mut shorts = String::new();
+    if all {
+        shorts.push('a');
+    }
+    if long {
+        shorts.push('l');
+    }
+    if human {
+        shorts.push('h');
+    }
+    if time {
+        shorts.push('t');
+    }
+    if reverse {
+        shorts.push('r');
+    }
+    if recursive {
+        shorts.push('R');
+    }
+    if inode {
+        shorts.push('i');
+    }
+    if directory {
+        shorts.push('d');
+    }
+
+    if !shorts.is_empty() {
+        cmd.push_str(" -");
+        cmd.push_str(&shorts);
+    }
+    if !path.trim().is_empty() {
+        cmd.push(' ');
+        cmd.push_str(path.trim());
+    }
+    LsResponse { command: cmd }
+}
+
+// --- 29. Firewall Command ---
+#[derive(Serialize)]
+pub struct FirewallResponse {
+    pub command: String,
+}
+pub fn generate_firewall(
+    op: &str,
+    zone: &str,
+    target_type: &str,
+    target: &str,
+    permanent: bool,
+) -> FirewallResponse {
+    let mut cmd = String::from("firewall-cmd");
+
+    if op == "reload" {
+        cmd.push_str(" --reload");
+        return FirewallResponse { command: cmd };
+    }
+
+    if permanent {
+        cmd.push_str(" --permanent");
+    }
+
+    let is_all = zone == "all";
+
+    if !is_all && !zone.trim().is_empty() && zone != "default" {
+        cmd.push_str(" --zone=");
+        cmd.push_str(zone.trim());
+    }
+
+    match op {
+        "list" => {
+            if is_all {
+                cmd.push_str(" --list-all-zones");
+            } else {
+                cmd.push_str(" --list-all");
+            }
+        }
+        "add" => {
+            if target_type == "port" {
+                cmd.push_str(" --add-port=");
+            } else {
+                cmd.push_str(" --add-service=");
+            }
+            if !target.trim().is_empty() {
+                cmd.push_str(target.trim());
+            }
+        }
+        "remove" => {
+            if target_type == "port" {
+                cmd.push_str(" --remove-port=");
+            } else {
+                cmd.push_str(" --remove-service=");
+            }
+            if !target.trim().is_empty() {
+                cmd.push_str(target.trim());
+            }
+        }
+        _ => {}
+    }
+
+    FirewallResponse { command: cmd }
+}
+
+// --- 30. Systemctl Command ---
+#[derive(Serialize)]
+pub struct SystemctlResponse {
+    pub command: String,
+}
+pub fn generate_systemctl(
+    operation: &str,
+    service: &str,
+    user_mode: bool,
+    now: bool,
+    force: bool,
+    global: bool,
+) -> SystemctlResponse {
+    let mut cmd = String::from("systemctl");
+
+    if user_mode {
+        cmd.push_str(" --user");
+    } else if global {
+        cmd.push_str(" --global");
+    }
+
+    if !operation.trim().is_empty() {
+        cmd.push(' ');
+        cmd.push_str(operation);
+    }
+
+    if force {
+        cmd.push_str(" --force");
+    }
+    if now && (operation == "enable" || operation == "disable" || operation == "mask") {
+        cmd.push_str(" --now");
+    }
+
+    if !service.trim().is_empty() && operation != "daemon-reload" {
+        cmd.push(' ');
+        cmd.push_str(service.trim());
+    }
+
+    SystemctlResponse { command: cmd }
+}
+
+// --- 31. Find Command ---
+#[derive(Serialize)]
+pub struct FindResponse {
+    pub command: String,
+}
+pub fn generate_find(
+    path: &str,
+    name: &str,
+    iname: bool,
+    target_type: &str,
+    size: &str,
+    mtime: &str,
+    empty: bool,
+    exec: &str,
+) -> FindResponse {
+    let mut cmd = String::from("find");
+
+    // Path defaults to . if empty, but usually find [path] [options]
+    if !path.trim().is_empty() {
+        cmd.push(' ');
+        cmd.push_str(path.trim());
+    } else {
+        cmd.push_str(" .");
+    }
+
+    if !name.trim().is_empty() {
+        cmd.push(' ');
+        if iname {
+            cmd.push_str("-iname");
+        } else {
+            cmd.push_str("-name");
+        }
+        cmd.push(' ');
+        // Quote the name pattern to prevent shell expansion
+        cmd.push('"');
+        cmd.push_str(&name.trim().replace('"', "\\\""));
+        cmd.push('"');
+    }
+
+    if !target_type.trim().is_empty() && target_type != "all" {
+        cmd.push_str(" -type ");
+        cmd.push_str(target_type.trim());
+    }
+
+    if empty {
+        cmd.push_str(" -empty");
+    } else if !size.trim().is_empty() {
+        cmd.push_str(" -size ");
+        cmd.push_str(size.trim());
+    }
+
+    if !mtime.trim().is_empty() {
+        cmd.push_str(" -mtime ");
+        cmd.push_str(mtime.trim());
+    }
+
+    if !exec.trim().is_empty() {
+        cmd.push_str(" -exec ");
+        cmd.push_str(exec.trim());
+        cmd.push_str(" {} \\;");
+    }
+
+    FindResponse { command: cmd }
+}

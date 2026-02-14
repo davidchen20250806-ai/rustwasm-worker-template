@@ -156,6 +156,77 @@ struct GitRequest {
     opt_oneline: bool,
     opt_graph: bool,
 }
+#[derive(Deserialize)]
+struct StraceRequest {
+    target: String,
+    is_pid: bool,
+    follow: bool,
+    summary: bool,
+    output_file: String,
+    filter: String,
+    string_limit: String,
+    timestamp: bool,
+}
+#[derive(Deserialize)]
+struct IostatRequest {
+    interval: String,
+    count: String,
+    human: bool,
+    extended: bool,
+    unit: String,
+    partitions: bool,
+    timestamp: bool,
+    device: String,
+}
+#[derive(Deserialize)]
+struct NiceRequest {
+    mode: String,
+    priority: i32,
+    command: String,
+    target_type: String,
+    target: String,
+}
+#[derive(Deserialize)]
+struct LsRequest {
+    path: String,
+    all: bool,
+    long: bool,
+    human: bool,
+    time: bool,
+    reverse: bool,
+    recursive: bool,
+    inode: bool,
+    directory: bool,
+    color: bool,
+}
+#[derive(Deserialize)]
+struct FirewallRequest {
+    op: String,
+    zone: String,
+    target_type: String,
+    target: String,
+    permanent: bool,
+}
+#[derive(Deserialize)]
+struct SystemctlRequest {
+    operation: String,
+    service: String,
+    user_mode: bool,
+    now: bool,
+    force: bool,
+    global: bool,
+}
+#[derive(Deserialize)]
+struct FindRequest {
+    path: String,
+    name: String,
+    iname: bool,
+    target_type: String,
+    size: String,
+    mtime: String,
+    empty: bool,
+    exec: String,
+}
 
 #[derive(Serialize)]
 struct GenericResponse {
@@ -403,6 +474,91 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
                 data.opt_tags,
                 data.opt_oneline,
                 data.opt_graph,
+            ))
+        })
+        .post_async("/api/strace", |mut req, _| async move {
+            let data: StraceRequest = req.json().await?;
+            Response::from_json(&utils::generate_strace(
+                &data.target,
+                data.is_pid,
+                data.follow,
+                data.summary,
+                &data.output_file,
+                &data.filter,
+                &data.string_limit,
+                data.timestamp,
+            ))
+        })
+        .post_async("/api/iostat", |mut req, _| async move {
+            let data: IostatRequest = req.json().await?;
+            Response::from_json(&utils::generate_iostat(
+                &data.interval,
+                &data.count,
+                data.human,
+                data.extended,
+                &data.unit,
+                data.partitions,
+                data.timestamp,
+                &data.device,
+            ))
+        })
+        .post_async("/api/nice", |mut req, _| async move {
+            let data: NiceRequest = req.json().await?;
+            Response::from_json(&utils::generate_nice(
+                &data.mode,
+                data.priority,
+                &data.command,
+                &data.target_type,
+                &data.target,
+            ))
+        })
+        .post_async("/api/ls", |mut req, _| async move {
+            let data: LsRequest = req.json().await?;
+            Response::from_json(&utils::generate_ls(
+                &data.path,
+                data.all,
+                data.long,
+                data.human,
+                data.time,
+                data.reverse,
+                data.recursive,
+                data.inode,
+                data.directory,
+                data.color,
+            ))
+        })
+        .post_async("/api/firewall", |mut req, _| async move {
+            let data: FirewallRequest = req.json().await?;
+            Response::from_json(&utils::generate_firewall(
+                &data.op,
+                &data.zone,
+                &data.target_type,
+                &data.target,
+                data.permanent,
+            ))
+        })
+        .post_async("/api/systemctl", |mut req, _| async move {
+            let data: SystemctlRequest = req.json().await?;
+            Response::from_json(&utils::generate_systemctl(
+                &data.operation,
+                &data.service,
+                data.user_mode,
+                data.now,
+                data.force,
+                data.global,
+            ))
+        })
+        .post_async("/api/find", |mut req, _| async move {
+            let data: FindRequest = req.json().await?;
+            Response::from_json(&utils::generate_find(
+                &data.path,
+                &data.name,
+                data.iname,
+                &data.target_type,
+                &data.size,
+                &data.mtime,
+                data.empty,
+                &data.exec,
             ))
         })
         .run(req, env)

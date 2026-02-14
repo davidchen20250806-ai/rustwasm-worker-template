@@ -370,11 +370,18 @@ pub fn get_homepage() -> &'static str {
             <div class="menu-group">
                 <div class="menu-cat" onclick="toggleGroup(this)"><span>Linux 命令</span><span class="menu-arrow">▼</span></div>
                 <ul class="menu-list">
+                    <li><a class="link" onclick="nav('ls', this)"><span class="icon">📂</span>列出文件 (Ls)</a></li>
                     <li><a class="link" onclick="nav('git', this)"><span class="icon">🎋</span>Git 命令</a></li>
                     <li><a class="link" onclick="nav('chmod', this)"><span class="icon">🐧</span>权限 (Chmod)</a></li>
                     <li><a class="link" onclick="nav('tar', this)"><span class="icon">📦</span>压缩 (Tar)</a></li>
                     <li><a class="link" onclick="nav('ps', this)"><span class="icon">📊</span>进程 (Ps)</a></li>
                     <li><a class="link" onclick="nav('tcpdump', this)"><span class="icon">📡</span>抓包 (Tcpdump)</a></li>
+                    <li><a class="link" onclick="nav('strace', this)"><span class="icon">🔬</span>系统调用 (Strace)</a></li>
+                    <li><a class="link" onclick="nav('iostat', this)"><span class="icon">📈</span>磁盘 I/O (Iostat)</a></li>
+                    <li><a class="link" onclick="nav('nice', this)"><span class="icon">⚡</span>进程优先级 (Nice)</a></li>
+                    <li><a class="link" onclick="nav('firewall', this)"><span class="icon">🔥</span>防火墙 (Firewall)</a></li>
+                    <li><a class="link" onclick="nav('systemctl', this)"><span class="icon">⚙️</span>服务管理 (Systemctl)</a></li>
+                    <li><a class="link" onclick="nav('find', this)"><span class="icon">🔍</span>查找文件 (Find)</a></li>
                 </ul>
             </div>
             <div class="menu-group">
@@ -974,6 +981,247 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
             </div>
         </div>
 
+        <div id="strace" class="panel">
+            <h2>系统调用 (Strace)</h2>
+            <div class="row">
+                <div style="flex:1">
+                    <div class="cron-label">目标 (PID 或 命令)</div>
+                    <input id="st-target" placeholder="例如: 1234 或 ls -la" oninput="doStrace()">
+                </div>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none;margin-top:20px">
+                    <input type="checkbox" id="st-pid" onchange="doStrace()" style="width:18px;height:18px;accent-color:var(--primary)"> 是 PID (-p)
+                </label>
+            </div>
+            <div class="row" style="margin-bottom:15px; gap:20px; background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0;">
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="st-f" onchange="doStrace()" style="width:18px;height:18px;accent-color:var(--primary)"> 跟踪子进程 (-f)</label>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="st-c" onchange="doStrace()" style="width:18px;height:18px;accent-color:var(--primary)"> 统计摘要 (-c)</label>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="st-tt" onchange="doStrace()" style="width:18px;height:18px;accent-color:var(--primary)"> 时间戳 (-tt)</label>
+            </div>
+            <div class="grid-4" style="margin-bottom:20px">
+                <div><div class="cron-label">过滤表达式 (-e)</div><input id="st-e" placeholder="trace=open,read" oninput="doStrace()"></div>
+                <div><div class="cron-label">字符串长度 (-s)</div><input id="st-s" placeholder="32" oninput="doStrace()"></div>
+                <div style="grid-column: span 2"><div class="cron-label">输出文件 (-o)</div><input id="st-o" placeholder="output.txt" oninput="doStrace()"></div>
+            </div>
+            <div class="result-card">
+                <div class="result-label">生成的命令</div>
+                <div id="st-cmd" class="result-val" style="font-size:16px; display:flex; align-items:center; min-height:36px;">strace</div>
+                <button class="icon-btn" onclick="copy('st-cmd')"><svg><use href="#i-copy"></use></svg></button>
+            </div>
+        </div>
+
+        <div id="iostat" class="panel">
+            <h2>磁盘 I/O (Iostat)</h2>
+            <div style="background:#f1f5f9; padding:15px; border-radius:8px; margin-bottom:20px; font-size:14px; color:#475569; line-height:1.6;">
+                <strong>说明：</strong> <code>iostat</code> 命令用于监控系统输入/输出设备和 CPU 的使用情况。它可以汇报磁盘活动的统计数据，帮助识别 I/O 瓶颈。<br>
+                通常包含在 <code>sysstat</code> 软件包中。
+            </div>
+            <div class="grid-4" style="margin-bottom:15px">
+                <div><div class="cron-label">刷新间隔 (秒)</div><input id="io-int" placeholder="例如: 1" oninput="doIostat()"></div>
+                <div><div class="cron-label">刷新次数</div><input id="io-cnt" placeholder="例如: 10" oninput="doIostat()"></div>
+                <div style="grid-column: span 2"><div class="cron-label">指定设备 (可选)</div><input id="io-dev" placeholder="例如: sda" oninput="doIostat()"></div>
+            </div>
+            <div class="row" style="margin-bottom:15px; gap:20px; background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0;">
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="io-x" onchange="doIostat()" style="width:18px;height:18px;accent-color:var(--primary)"> 扩展信息 (-x)</label>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="io-h" onchange="doIostat()" style="width:18px;height:18px;accent-color:var(--primary)"> 人类可读 (-h)</label>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="io-t" onchange="doIostat()" style="width:18px;height:18px;accent-color:var(--primary)"> 时间戳 (-t)</label>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="io-p" onchange="doIostat()" style="width:18px;height:18px;accent-color:var(--primary)"> 显示分区 (-p)</label>
+            </div>
+            <div class="row" style="margin-bottom:20px">
+                <div class="cron-label" style="margin-right:10px">单位:</div>
+                <select id="io-unit" onchange="doIostat()" style="flex:1"><option value="">默认 (Block)</option><option value="k">KB (-k)</option><option value="m">MB (-m)</option></select>
+            </div>
+            <div class="result-card">
+                <div class="result-label">生成的命令</div>
+                <div id="io-cmd" class="result-val" style="font-size:16px; display:flex; align-items:center; min-height:36px;">iostat</div>
+                <button class="icon-btn" onclick="copy('io-cmd')"><svg><use href="#i-copy"></use></svg></button>
+            </div>
+        </div>
+
+        <div id="nice" class="panel">
+            <h2>进程优先级 (Nice/Renice)</h2>
+            <div style="background:#f1f5f9; padding:15px; border-radius:8px; margin-bottom:20px; font-size:14px; color:#475569; line-height:1.6;">
+                <strong>说明：</strong> Linux 进程优先级 (Niceness) 范围从 <strong>-20</strong> (最高优先级) 到 <strong>19</strong> (最低优先级)，默认为 0。<br>
+                <ul style="margin-left:20px; margin-top:5px;">
+                    <li><code>nice</code>：用于以指定的优先级<strong>启动</strong>新进程。</li>
+                    <li><code>renice</code>：用于<strong>调整</strong>正在运行的进程的优先级。</li>
+                </ul>
+                <div style="margin-top:5px; font-size:12px; color:#64748b">* 注意：设置负值（提高优先级）通常需要 root 权限。</div>
+            </div>
+            
+            <div class="row">
+                <div class="cron-label" style="margin-right:10px">模式:</div>
+                <select id="ni-mode" onchange="updateNiceUI(); doNice()" style="flex:1">
+                    <option value="nice">启动新进程 (nice)</option>
+                    <option value="renice">调整现有进程 (renice)</option>
+                </select>
+            </div>
+
+            <div class="row">
+                <div style="flex:1">
+                    <div class="cron-label">优先级值 (-20 ~ 19)</div>
+                    <div style="display:flex; align-items:center; gap:15px">
+                        <input type="range" id="ni-prio-r" min="-20" max="19" value="10" oninput="document.getElementById('ni-prio').value=this.value; doNice()" style="flex:1; cursor:pointer">
+                        <input type="number" id="ni-prio" value="10" min="-20" max="19" oninput="document.getElementById('ni-prio-r').value=this.value; doNice()" style="width:80px">
+                    </div>
+                </div>
+            </div>
+
+            <div id="box-nice" style="margin-bottom:20px">
+                <div class="cron-label">要执行的命令</div>
+                <input id="ni-cmd" placeholder="例如: tar -czf backup.tar.gz /home" oninput="doNice()">
+            </div>
+
+            <div id="box-renice" class="grid-4" style="margin-bottom:20px; display:none">
+                <div><div class="cron-label">目标类型</div><select id="ni-type" onchange="doNice()"><option value="pid">进程 ID (-p)</option><option value="group">进程组 (-g)</option><option value="user">用户 (-u)</option></select></div>
+                <div style="grid-column: span 3"><div class="cron-label">目标 (PID / GID / Username)</div><input id="ni-target" placeholder="例如: 1234 或 www-data" oninput="doNice()"></div>
+            </div>
+
+            <div class="result-card"><div class="result-label">生成的命令</div><div id="ni-res" class="result-val" style="font-size:16px; display:flex; align-items:center; min-height:36px;">nice -n 10</div><button class="icon-btn" onclick="copy('ni-res')"><svg><use href="#i-copy"></use></svg></button></div>
+        </div>
+
+        <div id="ls" class="panel">
+            <h2>列出文件 (Ls)</h2>
+            <div class="row">
+                <div style="flex:1">
+                    <div class="cron-label">路径 (Path)</div>
+                    <input id="ls-path" placeholder="例如: /var/log 或 ." oninput="doLs()">
+                </div>
+            </div>
+            <div class="grid-4" style="margin-bottom:20px; background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0;">
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="ls-l" onchange="doLs()" style="width:18px;height:18px;accent-color:var(--primary)"> 长格式 (-l)</label>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="ls-a" onchange="doLs()" style="width:18px;height:18px;accent-color:var(--primary)"> 显示隐藏 (-a)</label>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="ls-h" onchange="doLs()" style="width:18px;height:18px;accent-color:var(--primary)"> 人类可读 (-h)</label>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="ls-t" onchange="doLs()" style="width:18px;height:18px;accent-color:var(--primary)"> 按时间排序 (-t)</label>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="ls-r" onchange="doLs()" style="width:18px;height:18px;accent-color:var(--primary)"> 反向排序 (-r)</label>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="ls-R" onchange="doLs()" style="width:18px;height:18px;accent-color:var(--primary)"> 递归 (-R)</label>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="ls-i" onchange="doLs()" style="width:18px;height:18px;accent-color:var(--primary)"> Inode (-i)</label>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="ls-d" onchange="doLs()" style="width:18px;height:18px;accent-color:var(--primary)"> 仅目录 (-d)</label>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="ls-c" checked onchange="doLs()" style="width:18px;height:18px;accent-color:var(--primary)"> 颜色 (--color)</label>
+            </div>
+            <div class="result-card"><div class="result-label">生成的命令</div><div id="ls-cmd" class="result-val" style="font-size:16px; display:flex; align-items:center; min-height:36px;">ls --color=auto</div><button class="icon-btn" onclick="copy('ls-cmd')"><svg><use href="#i-copy"></use></svg></button></div>
+        </div>
+
+        <div id="firewall" class="panel">
+            <h2>防火墙 (Firewall-cmd)</h2>
+            <div style="background:#f1f5f9; padding:15px; border-radius:8px; margin-bottom:20px; font-size:14px; color:#475569; line-height:1.6;">
+                <strong>说明：</strong> <code>firewall-cmd</code> 是 Linux 上 firewalld 守护进程的命令行客户端。<br>
+                它支持动态管理防火墙规则，无需重启服务。使用 <code>--permanent</code> 标志可将改动保存到配置文件中。
+            </div>
+            
+            <div class="row">
+                <div class="cron-label" style="margin-right:10px">操作:</div>
+                <select id="fw-op" onchange="updateFwUI(); doFirewall()" style="flex:1">
+                    <option value="add">添加规则 (Add)</option>
+                    <option value="remove">移除规则 (Remove)</option>
+                    <option value="list">列出所有 (List)</option>
+                    <option value="reload">重载配置 (Reload)</option>
+                </select>
+            </div>
+
+            <div id="fw-opts">
+                <div class="grid-4" style="margin-bottom:15px">
+                    <div><div class="cron-label">区域 (Zone)</div><select id="fw-zone" onchange="doFirewall()">
+                        <option value="public" selected>public (默认)</option>
+                        <option value="all">所有区域 (All Zones)</option>
+                        <option value="home">home</option>
+                        <option value="work">work</option>
+                        <option value="trusted">trusted</option>
+                        <option value="block">block</option>
+                        <option value="dmz">dmz</option>
+                        <option value="external">external</option>
+                        <option value="internal">internal</option>
+                        <option value="drop">drop</option>
+                    </select></div>
+                    <div id="fw-perm-box" style="display:flex; align-items:flex-end; padding-bottom:15px">
+                        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="fw-perm" onchange="doFirewall()" style="width:18px;height:18px;accent-color:var(--primary)"> 永久生效 (--permanent)</label>
+                    </div>
+                </div>
+
+                <div id="fw-rule-box" class="grid-4" style="margin-bottom:20px">
+                    <div><div class="cron-label">类型</div><select id="fw-type" onchange="doFirewall()"><option value="port">端口 (Port)</option><option value="service">服务 (Service)</option></select></div>
+                    <div style="grid-column: span 3"><div class="cron-label">值 (例如: 80/tcp 或 http)</div><input id="fw-target" placeholder="80/tcp" oninput="doFirewall()"></div>
+                </div>
+            </div>
+
+            <div class="result-card"><div class="result-label">生成的命令</div><div id="fw-cmd" class="result-val" style="font-size:16px; display:flex; align-items:center; min-height:36px;">firewall-cmd --permanent --zone=public --add-port=80/tcp</div><button class="icon-btn" onclick="copy('fw-cmd')"><svg><use href="#i-copy"></use></svg></button></div>
+        </div>
+
+        <div id="systemctl" class="panel">
+            <h2>服务管理 (Systemctl)</h2>
+            <div style="background:#f1f5f9; padding:15px; border-radius:8px; margin-bottom:20px; font-size:14px; color:#475569; line-height:1.6;">
+                <strong>说明：</strong> <code>systemctl</code> 是用于控制 systemd 系统和服务管理器的主要工具。<br>
+                它可以启动、停止、重启服务，以及管理系统启动时的服务状态。
+            </div>
+            
+            <div class="row">
+                <div class="cron-label" style="margin-right:10px">操作:</div>
+                <select id="sys-op" onchange="updateSysUI(); doSystemctl()" style="flex:1">
+                    <option value="status">查看状态 (status)</option>
+                    <option value="start">启动 (start)</option>
+                    <option value="stop">停止 (stop)</option>
+                    <option value="restart">重启 (restart)</option>
+                    <option value="reload">重载配置 (reload)</option>
+                    <option value="enable">开机自启 (enable)</option>
+                    <option value="disable">禁用自启 (disable)</option>
+                    <option value="mask">屏蔽服务 (mask)</option>
+                    <option value="unmask">取消屏蔽 (unmask)</option>
+                    <option value="daemon-reload">重载所有配置 (daemon-reload)</option>
+                </select>
+            </div>
+
+            <div id="sys-svc-box" style="margin-bottom:15px"><div class="cron-label">服务名称 (Service)</div><input id="sys-svc" placeholder="例如: nginx, docker, sshd" oninput="doSystemctl()"></div>
+
+            <div class="grid-4" style="margin-bottom:20px; background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0;">
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="sys-user" onchange="doSystemctl()" style="width:18px;height:18px;accent-color:var(--primary)"> 用户模式 (--user)</label>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="sys-now" onchange="doSystemctl()" style="width:18px;height:18px;accent-color:var(--primary)"> 立即执行 (--now)</label>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="sys-force" onchange="doSystemctl()" style="width:18px;height:18px;accent-color:var(--primary)"> 强制 (--force)</label>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="sys-global" onchange="doSystemctl()" style="width:18px;height:18px;accent-color:var(--primary)"> 全局 (--global)</label>
+            </div>
+
+            <div class="result-card"><div class="result-label">生成的命令</div><div id="sys-cmd" class="result-val" style="font-size:16px; display:flex; align-items:center; min-height:36px;">systemctl status</div><button class="icon-btn" onclick="copy('sys-cmd')"><svg><use href="#i-copy"></use></svg></button></div>
+        </div>
+
+        <div id="find" class="panel">
+            <h2>查找文件 (Find)</h2>
+            <div class="row">
+                <div style="flex:1">
+                    <div class="cron-label">搜索路径 (Path)</div>
+                    <input id="fd-path" placeholder="例如: /var/log 或 ." value="." oninput="doFind()">
+                </div>
+            </div>
+            <div class="grid-4" style="margin-bottom:15px">
+                <div style="grid-column: span 2">
+                    <div class="cron-label">文件名 (Name)</div>
+                    <input id="fd-name" placeholder="*.log" oninput="doFind()">
+                </div>
+                <div>
+                    <div class="cron-label">文件类型 (Type)</div>
+                    <select id="fd-type" onchange="doFind()">
+                        <option value="all">全部 (All)</option>
+                        <option value="f">文件 (f)</option>
+                        <option value="d">目录 (d)</option>
+                        <option value="l">符号链接 (l)</option>
+                    </select>
+                </div>
+                <div style="display:flex; align-items:flex-end; padding-bottom:15px">
+                    <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none">
+                        <input type="checkbox" id="fd-iname" onchange="doFind()" style="width:18px;height:18px;accent-color:var(--primary)"> 忽略大小写 (-iname)
+                    </label>
+                </div>
+            </div>
+            <div class="grid-4" style="margin-bottom:15px">
+                <div><div class="cron-label">大小 (Size)</div><input id="fd-size" placeholder="+100M" oninput="doFind()"></div>
+                <div><div class="cron-label">修改时间 (Mtime)</div><input id="fd-mtime" placeholder="-7 (7天内)" oninput="doFind()"></div>
+                <div style="display:flex; align-items:flex-end; padding-bottom:15px"><label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="fd-empty" onchange="updateFindUI(); doFind()" style="width:18px;height:18px;accent-color:var(--primary)"> 空文件 (-empty)</label></div>
+            </div>
+            <div style="margin-bottom:20px"><div class="cron-label">执行命令 (-exec ... {} \;)</div><input id="fd-exec" placeholder="例如: rm -rf 或 chmod 644" oninput="doFind()"></div>
+            <div class="result-card">
+                <div class="result-label">生成的命令</div>
+                <div id="fd-cmd" class="result-val" style="font-size:16px; display:flex; align-items:center; min-height:36px;">find .</div>
+                <button class="icon-btn" onclick="copy('fd-cmd')"><svg><use href="#i-copy"></use></svg></button>
+            </div>
+        </div>
+
         <div id="case" class="panel">
             <h2>变量命名转换</h2>
             <div class="row">
@@ -1536,8 +1784,138 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
                 document.getElementById('git-cmd-res').innerText = d.command;
             } catch(e) {}
         }
+        async function doStrace() {
+            try {
+                let d = await post('/strace', {
+                    target: document.getElementById('st-target').value,
+                    is_pid: document.getElementById('st-pid').checked,
+                    follow: document.getElementById('st-f').checked,
+                    summary: document.getElementById('st-c').checked,
+                    timestamp: document.getElementById('st-tt').checked,
+                    filter: document.getElementById('st-e').value,
+                    string_limit: document.getElementById('st-s').value,
+                    output_file: document.getElementById('st-o').value
+                });
+                document.getElementById('st-cmd').innerText = d.command;
+            } catch(e) {}
+        }
+        async function doIostat() {
+            try {
+                let d = await post('/iostat', {
+                    interval: document.getElementById('io-int').value,
+                    count: document.getElementById('io-cnt').value,
+                    device: document.getElementById('io-dev').value,
+                    extended: document.getElementById('io-x').checked,
+                    human: document.getElementById('io-h').checked,
+                    timestamp: document.getElementById('io-t').checked,
+                    partitions: document.getElementById('io-p').checked,
+                    unit: document.getElementById('io-unit').value
+                });
+                document.getElementById('io-cmd').innerText = d.command;
+            } catch(e) {}
+        }
+        function updateNiceUI() {
+            const m = document.getElementById('ni-mode').value;
+            document.getElementById('box-nice').style.display = m === 'nice' ? 'block' : 'none';
+            document.getElementById('box-renice').style.display = m === 'renice' ? 'grid' : 'none';
+        }
+        async function doNice() {
+            try {
+                let d = await post('/nice', {
+                    mode: document.getElementById('ni-mode').value,
+                    priority: parseInt(document.getElementById('ni-prio').value) || 0,
+                    command: document.getElementById('ni-cmd').value,
+                    target_type: document.getElementById('ni-type').value,
+                    target: document.getElementById('ni-target').value
+                });
+                document.getElementById('ni-res').innerText = d.command;
+            } catch(e) {}
+        }
+        async function doLs() {
+            try {
+                let d = await post('/ls', {
+                    path: document.getElementById('ls-path').value,
+                    long: document.getElementById('ls-l').checked,
+                    all: document.getElementById('ls-a').checked,
+                    human: document.getElementById('ls-h').checked,
+                    time: document.getElementById('ls-t').checked,
+                    reverse: document.getElementById('ls-r').checked,
+                    recursive: document.getElementById('ls-R').checked,
+                    inode: document.getElementById('ls-i').checked,
+                    directory: document.getElementById('ls-d').checked,
+                    color: document.getElementById('ls-c').checked
+                });
+                document.getElementById('ls-cmd').innerText = d.command;
+            } catch(e) {}
+        }
+        function updateFwUI() {
+            const op = document.getElementById('fw-op').value;
+            const isRule = op === 'add' || op === 'remove';
+            const isReload = op === 'reload';
+            const isList = op === 'list';
+            
+            document.getElementById('fw-opts').style.display = isReload ? 'none' : 'block';
+            document.getElementById('fw-rule-box').style.display = isRule ? 'grid' : 'none';
+            document.getElementById('fw-perm-box').style.visibility = isList ? 'hidden' : 'visible';
+        }
+        async function doFirewall() {
+            try {
+                let d = await post('/firewall', {
+                    op: document.getElementById('fw-op').value,
+                    zone: document.getElementById('fw-zone').value,
+                    permanent: document.getElementById('fw-perm').checked,
+                    target_type: document.getElementById('fw-type').value,
+                    target: document.getElementById('fw-target').value
+                });
+                document.getElementById('fw-cmd').innerText = d.command;
+            } catch(e) {}
+        }
+        function updateSysUI() {
+            const op = document.getElementById('sys-op').value;
+            const show = (id, v) => document.getElementById(id).parentElement.style.display = v ? 'flex' : 'none';
+            
+            document.getElementById('sys-svc-box').style.display = op === 'daemon-reload' ? 'none' : 'block';
+            
+            show('sys-now', ['enable', 'disable', 'mask'].includes(op));
+            show('sys-global', ['enable', 'disable', 'mask', 'unmask'].includes(op));
+            show('sys-force', ['enable', 'mask'].includes(op));
+        }
+        async function doSystemctl() {
+            try {
+                let d = await post('/systemctl', {
+                    operation: document.getElementById('sys-op').value,
+                    service: document.getElementById('sys-svc').value,
+                    user_mode: document.getElementById('sys-user').checked,
+                    now: document.getElementById('sys-now').checked,
+                    force: document.getElementById('sys-force').checked,
+                    global: document.getElementById('sys-global').checked
+                });
+                document.getElementById('sys-cmd').innerText = d.command;
+            } catch(e) {}
+        }
+        function updateFindUI() {
+            const isEmpty = document.getElementById('fd-empty').checked;
+            const sizeInput = document.getElementById('fd-size');
+            sizeInput.disabled = isEmpty;
+            sizeInput.style.opacity = isEmpty ? 0.5 : 1;
+        }
+        async function doFind() {
+            try {
+                let d = await post('/find', {
+                    path: document.getElementById('fd-path').value,
+                    name: document.getElementById('fd-name').value,
+                    iname: document.getElementById('fd-iname').checked,
+                    target_type: document.getElementById('fd-type').value,
+                    size: document.getElementById('fd-size').value,
+                    mtime: document.getElementById('fd-mtime').value,
+                    empty: document.getElementById('fd-empty').checked,
+                    exec: document.getElementById('fd-exec').value
+                });
+                document.getElementById('fd-cmd').innerText = d.command;
+            } catch(e) {}
+        }
 
-        window.onload = () => { fillTime(); upCron(); upChmod(true); doTar(); doPs(); doTcpdump(); updateGitUI(); doGit(); };
+        window.onload = () => { fillTime(); upCron(); upChmod(true); doTar(); doPs(); doTcpdump(); updateGitUI(); doGit(); doStrace(); doIostat(); doNice(); doLs(); doFirewall(); updateSysUI(); doSystemctl(); updateFindUI(); doFind(); };
     </script>
 </body>
 </html>
