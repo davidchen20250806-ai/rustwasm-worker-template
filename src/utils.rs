@@ -1352,3 +1352,253 @@ pub fn generate_find(
 
     FindResponse { command: cmd }
 }
+
+// --- 32. Dockerfile Generator ---
+pub fn generate_dockerfile(
+    image: &str,
+    workdir: &str,
+    copy: &str,
+    run: &str,
+    env: &str,
+    expose: &str,
+    cmd: &str,
+) -> String {
+    let mut df = String::new();
+
+    // FROM
+    if !image.trim().is_empty() {
+        df.push_str(&format!("FROM {}\n", image.trim()));
+    } else {
+        df.push_str("FROM scratch\n");
+    }
+
+    // WORKDIR
+    if !workdir.trim().is_empty() {
+        df.push_str(&format!("WORKDIR {}\n", workdir.trim()));
+    }
+
+    // ENV
+    for line in env.lines() {
+        if !line.trim().is_empty() {
+            df.push_str(&format!("ENV {}\n", line.trim()));
+        }
+    }
+
+    // COPY
+    for line in copy.lines() {
+        if !line.trim().is_empty() {
+            df.push_str(&format!("COPY {}\n", line.trim()));
+        }
+    }
+
+    // RUN
+    for line in run.lines() {
+        if !line.trim().is_empty() {
+            df.push_str(&format!("RUN {}\n", line.trim()));
+        }
+    }
+
+    // EXPOSE
+    if !expose.trim().is_empty() {
+        for port in expose.split(&[',', ' '][..]) {
+            if !port.trim().is_empty() {
+                df.push_str(&format!("EXPOSE {}\n", port.trim()));
+            }
+        }
+    }
+
+    // CMD
+    if !cmd.trim().is_empty() {
+        df.push_str(&format!("CMD {}\n", cmd.trim()));
+    }
+
+    df
+}
+
+// --- 33. Nginx Config Generator ---
+pub fn generate_nginx_config(
+    domain: &str,
+    port: u16,
+    root: &str,
+    path: &str,
+    proxy: &str,
+    upstream: &str,
+    https: bool,
+    force_https: bool,
+    ssl_cert: &str,
+    ssl_key: &str,
+    spa: bool,
+    gzip: bool,
+    client_max_body_size: &str,
+    keepalive_timeout: &str,
+    proxy_connect_timeout: &str,
+    proxy_read_timeout: &str,
+    proxy_send_timeout: &str,
+) -> String {
+    let mut conf = String::new();
+    let domain = if domain.trim().is_empty() {
+        "example.com"
+    } else {
+        domain.trim()
+    };
+
+    let location_path = if path.trim().is_empty() {
+        "/"
+    } else {
+        path.trim()
+    };
+
+    // Upstream Block
+    let has_upstream = !upstream.trim().is_empty();
+    let upstream_name = format!("{}_backend", domain.replace('.', "_"));
+
+    if has_upstream {
+        conf.push_str(&format!("upstream {} {{\n", upstream_name));
+        for line in upstream.lines() {
+            if !line.trim().is_empty() {
+                conf.push_str(&format!("    server {};\n", line.trim()));
+            }
+        }
+        conf.push_str("}\n\n");
+    }
+
+    // HTTP Redirect Block
+    if https && force_https {
+        conf.push_str("server {\n");
+        conf.push_str("    listen 80;\n");
+        conf.push_str(&format!("    server_name {};\n", domain));
+        conf.push_str("    return 301 https://$host$request_uri;\n");
+        conf.push_str("}\n\n");
+    }
+
+    // Main Server Block
+    conf.push_str("server {\n");
+
+    if https {
+        conf.push_str("    listen 443 ssl http2;\n");
+        conf.push_str(&format!("    server_name {};\n\n", domain));
+
+        let cert_path = if ssl_cert.trim().is_empty() {
+            format!("/etc/nginx/ssl/{}.crt", domain)
+        } else {
+            ssl_cert.trim().to_string()
+        };
+        let key_path = if ssl_key.trim().is_empty() {
+            format!("/etc/nginx/ssl/{}.key", domain)
+        } else {
+            ssl_key.trim().to_string()
+        };
+
+        conf.push_str(&format!("    ssl_certificate {};\n", cert_path));
+        conf.push_str(&format!("    ssl_certificate_key {};\n", key_path));
+        conf.push_str("    ssl_protocols TLSv1.2 TLSv1.3;\n");
+        conf.push_str("    ssl_ciphers HIGH:!aNULL:!MD5;\n\n");
+    } else {
+        conf.push_str(&format!("    listen {};\n", port));
+        conf.push_str(&format!("    server_name {};\n\n", domain));
+    }
+
+    // Access Logs
+    conf.push_str(&format!(
+        "    access_log /var/log/nginx/{}.access.log;\n",
+        domain
+    ));
+    conf.push_str(&format!(
+        "    error_log /var/log/nginx/{}.error.log;\n\n",
+        domain
+    ));
+
+    // Gzip
+    if gzip {
+        conf.push_str("    gzip on;\n");
+        conf.push_str("    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;\n\n");
+    }
+
+    // Limits & Timeouts
+    if !client_max_body_size.trim().is_empty() {
+        conf.push_str(&format!(
+            "    client_max_body_size {};\n",
+            client_max_body_size.trim()
+        ));
+    }
+    if !keepalive_timeout.trim().is_empty() {
+        conf.push_str(&format!(
+            "    keepalive_timeout {};\n\n",
+            keepalive_timeout.trim()
+        ));
+    }
+
+    // Proxy or Static
+    if has_upstream {
+        conf.push_str(&format!("    location {} {{\n", location_path));
+        conf.push_str(&format!("        proxy_pass http://{};\n", upstream_name));
+        conf.push_str("        proxy_set_header Host $host;\n");
+        conf.push_str("        proxy_set_header X-Real-IP $remote_addr;\n");
+        conf.push_str("        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n");
+        conf.push_str("        proxy_set_header X-Forwarded-Proto $scheme;\n");
+        if !proxy_connect_timeout.trim().is_empty() {
+            conf.push_str(&format!(
+                "        proxy_connect_timeout {};\n",
+                proxy_connect_timeout.trim()
+            ));
+        }
+        if !proxy_read_timeout.trim().is_empty() {
+            conf.push_str(&format!(
+                "        proxy_read_timeout {};\n",
+                proxy_read_timeout.trim()
+            ));
+        }
+        if !proxy_send_timeout.trim().is_empty() {
+            conf.push_str(&format!(
+                "        proxy_send_timeout {};\n",
+                proxy_send_timeout.trim()
+            ));
+        }
+        conf.push_str("    }\n");
+    } else if !proxy.trim().is_empty() {
+        conf.push_str(&format!("    location {} {{\n", location_path));
+        conf.push_str(&format!("        proxy_pass {};\n", proxy.trim()));
+        conf.push_str("        proxy_set_header Host $host;\n");
+        conf.push_str("        proxy_set_header X-Real-IP $remote_addr;\n");
+        conf.push_str("        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n");
+        conf.push_str("        proxy_set_header X-Forwarded-Proto $scheme;\n");
+        if !proxy_connect_timeout.trim().is_empty() {
+            conf.push_str(&format!(
+                "        proxy_connect_timeout {};\n",
+                proxy_connect_timeout.trim()
+            ));
+        }
+        if !proxy_read_timeout.trim().is_empty() {
+            conf.push_str(&format!(
+                "        proxy_read_timeout {};\n",
+                proxy_read_timeout.trim()
+            ));
+        }
+        if !proxy_send_timeout.trim().is_empty() {
+            conf.push_str(&format!(
+                "        proxy_send_timeout {};\n",
+                proxy_send_timeout.trim()
+            ));
+        }
+        conf.push_str("    }\n");
+    } else {
+        let root_path = if root.trim().is_empty() {
+            "/var/www/html"
+        } else {
+            root.trim()
+        };
+        conf.push_str(&format!("    root {};\n", root_path));
+        conf.push_str("    index index.html index.htm;\n\n");
+
+        conf.push_str(&format!("    location {} {{\n", location_path));
+        if spa {
+            conf.push_str("        try_files $uri $uri/ /index.html;\n");
+        } else {
+            conf.push_str("        try_files $uri $uri/ =404;\n");
+        }
+        conf.push_str("    }\n");
+    }
+
+    conf.push_str("}\n");
+    conf
+}

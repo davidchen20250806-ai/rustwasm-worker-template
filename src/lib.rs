@@ -227,6 +227,36 @@ struct FindRequest {
     empty: bool,
     exec: String,
 }
+#[derive(Deserialize)]
+struct DockerfileRequest {
+    image: String,
+    workdir: String,
+    copy: String,
+    run: String,
+    env: String,
+    expose: String,
+    cmd: String,
+}
+#[derive(Deserialize)]
+struct NginxRequest {
+    domain: String,
+    port: u16,
+    root: String,
+    path: String,
+    proxy: String,
+    upstream: String,
+    https: bool,
+    force_https: bool,
+    ssl_cert: String,
+    ssl_key: String,
+    spa: bool,
+    gzip: bool,
+    client_max_body_size: String,
+    keepalive_timeout: String,
+    proxy_connect_timeout: String,
+    proxy_read_timeout: String,
+    proxy_send_timeout: String,
+}
 
 #[derive(Serialize)]
 struct GenericResponse {
@@ -560,6 +590,44 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
                 data.empty,
                 &data.exec,
             ))
+        })
+        .post_async("/api/dockerfile", |mut req, _| async move {
+            let data: DockerfileRequest = req.json().await?;
+            Response::from_json(&GenericResponse {
+                result: utils::generate_dockerfile(
+                    &data.image,
+                    &data.workdir,
+                    &data.copy,
+                    &data.run,
+                    &data.env,
+                    &data.expose,
+                    &data.cmd,
+                ),
+            })
+        })
+        .post_async("/api/nginx", |mut req, _| async move {
+            let data: NginxRequest = req.json().await?;
+            Response::from_json(&GenericResponse {
+                result: utils::generate_nginx_config(
+                    &data.domain,
+                    data.port,
+                    &data.root,
+                    &data.path,
+                    &data.proxy,
+                    &data.upstream,
+                    data.https,
+                    data.force_https,
+                    &data.ssl_cert,
+                    &data.ssl_key,
+                    data.spa,
+                    data.gzip,
+                    &data.client_max_body_size,
+                    &data.keepalive_timeout,
+                    &data.proxy_connect_timeout,
+                    &data.proxy_read_timeout,
+                    &data.proxy_send_timeout,
+                ),
+            })
         })
         .run(req, env)
         .await

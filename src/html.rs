@@ -365,6 +365,8 @@ pub fn get_homepage() -> &'static str {
                     <li><a class="link" onclick="nav('subnet', this)"><span class="icon">🌐</span>网络子网计算</a></li>
                     <li><a class="link" onclick="nav('diff', this)"><span class="icon">⚖️</span>文本对比</a></li>
                     <li><a class="link" onclick="nav('regex', this)"><span class="icon">🔍</span>正则测试</a></li>
+                    <li><a class="link" onclick="nav('dockerfile', this)"><span class="icon">🐳</span>Dockerfile 生成</a></li>
+                    <li><a class="link" onclick="nav('nginx', this)"><span class="icon">🔧</span>Nginx 配置</a></li>
                 </ul>
             </div>
             <div class="menu-group">
@@ -414,6 +416,12 @@ pub fn get_homepage() -> &'static str {
                     <li><a class="link" onclick="nav('date', this)"><span class="icon">📅</span>时间转换</a></li>
                     <li><a class="link" onclick="nav('color', this)"><span class="icon">🎨</span>颜色转换</a></li>
                     <li><a class="link" onclick="nav('qr', this)"><span class="icon">📱</span>二维码生成</a></li>
+                </ul>
+            </div>
+            <div class="menu-group">
+                <div class="menu-cat" onclick="toggleGroup(this)"><span>关于</span><span class="menu-arrow">▼</span></div>
+                <ul class="menu-list">
+                    <li><a class="link" onclick="nav('disclaimer', this)"><span class="icon">📜</span>免责声明</a></li>
                 </ul>
             </div>
         </div>
@@ -1242,6 +1250,101 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
             </div>
         </div>
 
+        <div id="dockerfile" class="panel">
+            <h2>Dockerfile 生成器</h2>
+            <div class="grid-4">
+                <div style="grid-column: span 2"><div class="cron-label">基础镜像 (FROM)</div><input id="df-image" placeholder="node:18-alpine" value="node:18-alpine"></div>
+                <div style="grid-column: span 2"><div class="cron-label">工作目录 (WORKDIR)</div><input id="df-workdir" placeholder="/app" value="/app"></div>
+            </div>
+            <div class="grid-4">
+                <div style="grid-column: span 2">
+                    <div class="cron-label">环境变量 (ENV) - 每行一个 KEY=VALUE</div>
+                    <textarea id="df-env" style="height:100px; font-family:monospace; border:2px solid #e5e7eb; border-radius:10px; padding:10px;" placeholder="NODE_ENV=production&#10;PORT=3000"></textarea>
+                </div>
+                <div style="grid-column: span 2">
+                    <div class="cron-label">复制文件 (COPY) - 每行 "源 目标"</div>
+                    <textarea id="df-copy" style="height:100px; font-family:monospace; border:2px solid #e5e7eb; border-radius:10px; padding:10px;" placeholder="package.json .&#10;src ./src"></textarea>
+                </div>
+            </div>
+            <div style="margin-bottom:15px">
+                <div class="cron-label">运行命令 (RUN) - 每行一条</div>
+                <textarea id="df-run" style="height:100px; font-family:monospace; border:2px solid #e5e7eb; border-radius:10px; padding:10px;" placeholder="npm install&#10;npm run build"></textarea>
+            </div>
+            <div class="grid-4">
+                <div style="grid-column: span 2"><div class="cron-label">暴露端口 (EXPOSE) - 逗号分隔</div><input id="df-expose" placeholder="3000, 8080" value="3000"></div>
+                <div style="grid-column: span 2"><div class="cron-label">启动命令 (CMD)</div><input id="df-cmd" placeholder='["npm", "start"]' value='["npm", "start"]'></div>
+            </div>
+            <button class="btn" style="width:100%; margin-bottom:20px" onclick="doDockerfile()">🔨 生成 Dockerfile</button>
+            <div class="editor-box">
+                <div class="editor-header"><span>生成结果</span><button class="icon-btn" onclick="copy('df-res')"><svg><use href="#i-copy"></use></svg></button></div>
+                <textarea id="df-res" class="editor-content" style="height:300px" readonly></textarea>
+            </div>
+        </div>
+
+        <div id="nginx" class="panel">
+            <h2>Nginx 配置生成</h2>
+            <div class="grid-4">
+                <div style="grid-column: span 2"><div class="cron-label">域名 (Server Name)</div><input id="ng-domain" placeholder="example.com" value="example.com"></div>
+                <div><div class="cron-label">端口 (Port)</div><input id="ng-port" placeholder="80" value="80"></div>
+                <div><div class="cron-label">SPA 模式</div>
+                    <div style="margin-top:10px">
+                        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="ng-spa" style="width:18px;height:18px;accent-color:var(--primary)"> 开启 (React/Vue)</label>
+                    </div>
+                </div>
+            </div>
+            <div class="grid-4" style="margin-bottom:15px">
+                <div style="grid-column: span 2"><div class="cron-label">网站根目录 (Root)</div><input id="ng-root" placeholder="/var/www/html" value="/var/www/html"></div>
+                <div><div class="cron-label">路径 (Location)</div><input id="ng-path" placeholder="/" value="/"></div>
+                <div><div class="cron-label">单点代理 (Proxy Pass)</div><input id="ng-proxy" placeholder="http://localhost:3000"></div>
+            </div>
+            <div style="margin-bottom:15px">
+                 <div class="cron-label">负载均衡 (Upstream Servers) - 每行一个 IP:Port (将覆盖单点代理)</div>
+                 <textarea id="ng-upstream" style="height:80px; font-family:monospace; border:2px solid #e5e7eb; border-radius:10px; padding:10px;" placeholder="127.0.0.1:3001&#10;127.0.0.1:3002"></textarea>
+            </div>
+            <div style="margin-bottom:10px; font-weight:bold; font-size:13px; color:#64748b">高级设置 (超时与限制)</div>
+            <div class="grid-5" style="margin-bottom:15px">
+                <div><div class="cron-label">最大上传 (Body)</div><input id="ng-size" placeholder="10m" value="10m"></div>
+                <div><div class="cron-label">连接保持 (Keepalive)</div><input id="ng-ka" placeholder="65" value="65"></div>
+                <div><div class="cron-label">代理连接超时</div><input id="ng-pct" placeholder="60s"></div>
+                <div><div class="cron-label">代理读取超时</div><input id="ng-prt" placeholder="60s"></div>
+                <div><div class="cron-label">代理发送超时</div><input id="ng-pst" placeholder="60s"></div>
+            </div>
+            <div class="row" style="background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:20px; flex-direction:column; align-items:stretch; gap:15px">
+                <div style="display:flex; gap:20px; flex-wrap:wrap">
+                    <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="ng-ssl" onchange="toggleSslInputs(); doNginx()" style="width:18px;height:18px;accent-color:var(--primary)"> 启用 HTTPS (SSL)</label>
+                    <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="ng-force" onchange="doNginx()" style="width:18px;height:18px;accent-color:var(--primary)"> 强制跳转 HTTPS</label>
+                    <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="ng-gzip" onchange="doNginx()" style="width:18px;height:18px;accent-color:var(--primary)"> 开启 Gzip</label>
+                </div>
+                <div id="ssl-inputs" class="grid-4" style="display:none; border-top:1px dashed #cbd5e1; padding-top:15px">
+                    <div style="grid-column: span 2"><div class="cron-label">证书路径 (.crt/.pem)</div><input id="ng-crt" placeholder="/etc/nginx/ssl/server.crt"></div>
+                    <div style="grid-column: span 2"><div class="cron-label">私钥路径 (.key)</div><input id="ng-key" placeholder="/etc/nginx/ssl/server.key"></div>
+                </div>
+            </div>
+            <button class="btn" style="width:100%; margin-bottom:20px" onclick="doNginx()">⚙️ 生成配置</button>
+            <div class="editor-box">
+                <div class="editor-header"><span>生成结果</span><button class="icon-btn" onclick="copy('ng-res')"><svg><use href="#i-copy"></use></svg></button></div>
+                <textarea id="ng-res" class="editor-content" style="height:300px" readonly></textarea>
+            </div>
+        </div>
+
+        <div id="disclaimer" class="panel">
+            <h2>免责声明</h2>
+            <div style="background:#fff; padding:25px; border-radius:12px; border:1px solid #e2e8f0; color:#334155; line-height:1.8">
+                <h3 style="margin-bottom:12px; color:#0f172a; font-size:16px;">1. 服务性质</h3>
+                <p style="margin-bottom:20px; color:#475569;">本站提供的所有开发者工具（包括但不限于格式化、转换、生成器等）仅供技术交流、学习和辅助开发使用。工具的计算结果仅供参考，不构成任何专业建议。</p>
+                
+                <h3 style="margin-bottom:12px; color:#0f172a; font-size:16px;">2. 数据隐私与安全</h3>
+                <p style="margin-bottom:20px; color:#475569;">本站基于 Cloudflare Workers 构建，部分计算逻辑在云端运行。虽然我们<strong>不会持久化存储</strong>您的任何输入数据，但鉴于网络环境的复杂性，<strong>请勿在工具中输入任何真实的敏感信息</strong>（如生产环境密码、私钥、API Token、个人身份信息等）。对于因用户主动输入敏感信息而导致的泄露风险，本站不承担责任。</p>
+                
+                <h3 style="margin-bottom:12px; color:#0f172a; font-size:16px;">3. 免责条款</h3>
+                <p style="margin-bottom:20px; color:#475569;">本站不对工具的准确性、及时性、完整性或稳定性做任何明示或暗示的保证。对于因使用或无法使用本站服务而导致的任何直接、间接、附带或后果性的损失（包括但不限于业务中断、数据丢失、利润损失），本站概不负责。</p>
+                
+                <div style="margin-top:30px; padding-top:20px; border-top:1px dashed #cbd5e1; font-size:13px; color:#94a3b8;">
+                    <p>继续使用本站服务即表示您已阅读并同意上述条款。</p>
+                </div>
+            </div>
+        </div>
+
     </main>
 
     <script>
@@ -1262,7 +1365,25 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
         }
         function copy(id) { const e=document.getElementById(id); const t=e.tagName==='TEXTAREA'||e.tagName==='INPUT'?e.value:e.innerText; if(!t)return toast('无内容', 'error'); navigator.clipboard.writeText(t).then(()=>toast('已复制')); }
         function setVal(id,v) { document.getElementById(id).value=v; }
-        async function post(u,d) { try{const r=await fetch('/api'+u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});if(!r.ok)throw await r.text();return await r.json();}catch(e){toast(e, 'error');throw e;} }
+        async function post(u,d) { 
+            try {
+                const r = await fetch('/api'+u, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(d)
+                });
+                if(!r.ok) throw await r.text();
+                return await r.json();
+            } catch(e) {
+                let msg = e;
+                // 捕获网络错误（如后端未启动或网络中断）
+                if (e instanceof TypeError && e.message.includes('fetch')) {
+                    msg = '网络请求失败: 请检查服务是否运行或网络连接';
+                }
+                toast(msg, 'error');
+                throw e;
+            } 
+        }
 
         // Menu Filter
         function filterMenu() {
@@ -1912,6 +2033,47 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
                     exec: document.getElementById('fd-exec').value
                 });
                 document.getElementById('fd-cmd').innerText = d.command;
+            } catch(e) {}
+        }
+        async function doDockerfile() {
+            try {
+                let d = await post('/dockerfile', {
+                    image: document.getElementById('df-image').value,
+                    workdir: document.getElementById('df-workdir').value,
+                    env: document.getElementById('df-env').value,
+                    copy: document.getElementById('df-copy').value,
+                    run: document.getElementById('df-run').value,
+                    expose: document.getElementById('df-expose').value,
+                    cmd: document.getElementById('df-cmd').value
+                });
+                document.getElementById('df-res').value = d.result;
+            } catch(e) {}
+        }
+        function toggleSslInputs() {
+            document.getElementById('ssl-inputs').style.display = document.getElementById('ng-ssl').checked ? 'grid' : 'none';
+        }
+        async function doNginx() {
+            try {
+                let d = await post('/nginx', {
+                    domain: document.getElementById('ng-domain').value,
+                    port: parseInt(document.getElementById('ng-port').value) || 80,
+                    root: document.getElementById('ng-root').value,
+                    path: document.getElementById('ng-path').value,
+                    proxy: document.getElementById('ng-proxy').value,
+                    upstream: document.getElementById('ng-upstream').value,
+                    https: document.getElementById('ng-ssl').checked,
+                    force_https: document.getElementById('ng-force').checked,
+                    ssl_cert: document.getElementById('ng-crt').value,
+                    ssl_key: document.getElementById('ng-key').value,
+                    gzip: document.getElementById('ng-gzip').checked,
+                    client_max_body_size: document.getElementById('ng-size').value,
+                    keepalive_timeout: document.getElementById('ng-ka').value,
+                    proxy_connect_timeout: document.getElementById('ng-pct').value,
+                    proxy_read_timeout: document.getElementById('ng-prt').value,
+                    proxy_send_timeout: document.getElementById('ng-pst').value,
+                    spa: document.getElementById('ng-spa').checked
+                });
+                document.getElementById('ng-res').value = d.result;
             } catch(e) {}
         }
 

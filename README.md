@@ -39,3 +39,16 @@ Read more about this on the [`workers-rs` project README](https://github.com/clo
 If you have any problems with the `worker` crate, please open an issue on the upstream project 
 issue tracker on the [`workers-rs` repository](https://github.com/cloudflare/workers-rs).
 
+## Troubleshooting
+
+### Network Connectivity Issues (China Region)
+
+If you encounter connection errors or "No internet connection" when running `wrangler` commands, you may need to configure a proxy.
+
+Run the following command in your terminal before using wrangler (replace `7890` with your local proxy port):
+
+```bash
+export HTTPS_PROXY=http://127.0.0.1:7890
+```
+
+Then try running `npx wrangler whoami` again.
