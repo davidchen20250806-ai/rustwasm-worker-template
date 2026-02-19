@@ -625,7 +625,8 @@ app.post('/api/toml-to-yaml', (req, res) => {
 });
 
 app.post('/api/chmod', (req, res) => {
-  res.json({ valid: true, command: `chmod ${req.body.octal} file` });
+  const file = req.body.file && req.body.file.trim() ? req.body.file.trim() : 'filename';
+  res.json({ valid: true, command: `chmod ${req.body.octal} ${file}` });
 });
 
 app.post('/api/js-enc', (req, res) => {
@@ -642,6 +643,121 @@ app.post('/api/js-enc', (req, res) => {
   }
 
   res.json({ result: obfuscated });
+});
+
+app.post('/api/lorem', (req, res) => {
+  const count = req.body.count || 3;
+  const mode = req.body.mode || 'paragraphs';
+  const words = ["lorem", "ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "elit", "sed", "do", "eiusmod", "tempor", "incididunt", "ut", "labore", "et", "dolore", "magna", "aliqua"];
+
+  let result = "";
+  if (mode === 'words') {
+    result = Array(count).fill(0).map(() => words[Math.floor(Math.random() * words.length)]).join(' ');
+  } else if (mode === 'sentences') {
+    result = Array(count).fill(0).map(() => {
+      const len = 5 + Math.floor(Math.random() * 10);
+      const s = Array(len).fill(0).map(() => words[Math.floor(Math.random() * words.length)]).join(' ');
+      return s.charAt(0).toUpperCase() + s.slice(1) + '.';
+    }).join(' ');
+  } else {
+    result = Array(count).fill(0).map(() => "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.").join('\n\n');
+  }
+  res.json({ result });
+});
+
+app.post('/api/fake-user', (req, res) => {
+  const count = req.body.count || 5;
+  const locale = req.body.locale || 'en';
+  const users = [];
+
+  const firstNames = locale === 'cn'
+    ? ["伟", "芳", "娜", "敏", "静", "秀英", "丽", "强", "磊", "军"]
+    : ["James", "Mary", "John", "Patricia", "Robert", "Jennifer", "Michael", "Linda"];
+  const lastNames = locale === 'cn'
+    ? ["王", "李", "张", "刘", "陈", "杨", "黄", "赵", "吴", "周"]
+    : ["Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis"];
+  const domains = ["gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "example.com"];
+  const cities = locale === 'cn' ? ["北京", "上海", "广州", "深圳"] : ["New York", "Los Angeles", "Chicago", "Houston"];
+
+  for (let i = 0; i < count; i++) {
+    const first = firstNames[Math.floor(Math.random() * firstNames.length)];
+    const last = lastNames[Math.floor(Math.random() * lastNames.length)];
+    const domain = domains[Math.floor(Math.random() * domains.length)];
+    const city = cities[Math.floor(Math.random() * cities.length)];
+
+    let name, email, address, phone;
+
+    if (locale === 'cn') {
+      name = last + first;
+      email = `user${Math.floor(Math.random() * 10000)}@${domain}`;
+      address = `${city}市人民路 ${Math.floor(Math.random() * 1000)}号`;
+      phone = `1${Math.floor(Math.random() * 10 + 30)}${Math.floor(Math.random() * 100000000)}`;
+    } else {
+      name = `${first} ${last}`;
+      email = `${first.toLowerCase()}.${last.toLowerCase()}@${domain}`;
+      address = `${Math.floor(Math.random() * 9999)} Main St, ${city}`;
+      phone = `+1-555-${Math.floor(Math.random() * 900 + 100)}-${Math.floor(Math.random() * 9000 + 1000)}`;
+    }
+
+    users.push({ name, email, address, phone });
+  }
+
+  res.json({ users });
+});
+
+app.post('/api/whoami', (req, res) => {
+  res.json({
+    ip: '127.0.0.1',
+    country: 'Localhost',
+    city: 'Local City',
+    asn: 'DEV-RAY-ID',
+    user_agent: req.get('User-Agent') || 'Mozilla/5.0 (Dev)',
+    headers: req.headers
+  });
+});
+
+app.post('/api/rsync', (req, res) => {
+  const { source, user, host, port, remote_path, archive, compress, verbose, delete: del, dry_run, progress, ssh, exclude } = req.body;
+  let cmd = 'rsync';
+  let shorts = '';
+  if (archive) shorts += 'a';
+  if (compress) shorts += 'z';
+  if (verbose) shorts += 'v';
+  if (dry_run) shorts += 'n';
+  if (progress) shorts += 'P';
+
+  if (shorts) cmd += ' -' + shorts;
+
+  if (del) cmd += ' --delete';
+
+  if (port && port.trim() !== '22') {
+    cmd += ` -e 'ssh -p ${port.trim()}'`;
+  } else if (ssh) {
+    cmd += ' -e ssh';
+  }
+
+  if (exclude && exclude.trim()) cmd += ` --exclude='${exclude.trim()}'`;
+
+  cmd += ' ' + (source && source.trim() ? source.trim() : '/source/path');
+
+  let dest = '';
+  if (host && host.trim()) {
+    if (user && user.trim()) dest += `${user.trim()}@`;
+    dest += `${host.trim()}:${remote_path && remote_path.trim() ? remote_path.trim() : ''}`;
+  } else {
+    dest = remote_path && remote_path.trim() ? remote_path.trim() : '/dest/path';
+  }
+  cmd += ' ' + dest;
+
+  let ssh_config = '';
+  if (host && host.trim()) {
+    ssh_config += `Host ${host.trim()}\n`;
+    ssh_config += `    HostName ${host.trim()}\n`;
+    if (user && user.trim()) ssh_config += `    User ${user.trim()}\n`;
+    if (port && port.trim() && port.trim() !== '22') ssh_config += `    Port ${port.trim()}\n`;
+  }
+
+  res.json({ command: cmd, ssh_config });
 });
 
 // 处理根路径的API请求（无前缀/api的情况）
@@ -1035,7 +1151,8 @@ app.post('/regex', (req, res) => {
 });
 
 app.post('/chmod', (req, res) => {
-  res.json({ valid: true, command: `chmod ${req.body.octal} file` });
+  const file = req.body.file && req.body.file.trim() ? req.body.file.trim() : 'filename';
+  res.json({ valid: true, command: `chmod ${req.body.octal} ${file}` });
 });
 
 app.post('/api/dockerfile', (req, res) => {

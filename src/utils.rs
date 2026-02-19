@@ -580,16 +580,21 @@ pub struct ChmodResponse {
     pub valid: bool,
     pub command: String,
 }
-pub fn calculate_chmod(octal: &str) -> ChmodResponse {
+pub fn calculate_chmod(octal: &str, file: &str) -> ChmodResponse {
     if octal.len() != 3 || octal.chars().any(|c| !c.is_digit(8)) {
         return ChmodResponse {
             valid: false,
             command: "Invalid".into(),
         };
     }
+    let f = if file.trim().is_empty() {
+        "filename"
+    } else {
+        file.trim()
+    };
     ChmodResponse {
         valid: true,
-        command: format!("chmod {} filename", octal),
+        command: format!("chmod {} {}", octal, f),
     }
 }
 
@@ -1601,4 +1606,416 @@ pub fn generate_nginx_config(
 
     conf.push_str("}\n");
     conf
+}
+
+// --- 34. Lorem Ipsum ---
+pub fn generate_lorem(count: usize, mode: &str) -> String {
+    let words = vec![
+        "lorem",
+        "ipsum",
+        "dolor",
+        "sit",
+        "amet",
+        "consectetur",
+        "adipiscing",
+        "elit",
+        "sed",
+        "do",
+        "eiusmod",
+        "tempor",
+        "incididunt",
+        "ut",
+        "labore",
+        "et",
+        "dolore",
+        "magna",
+        "aliqua",
+        "ut",
+        "enim",
+        "ad",
+        "minim",
+        "veniam",
+        "quis",
+        "nostrud",
+        "exercitation",
+        "ullamco",
+        "laboris",
+        "nisi",
+        "ut",
+        "aliquip",
+        "ex",
+        "ea",
+        "commodo",
+        "consequat",
+        "duis",
+        "aute",
+        "irure",
+        "dolor",
+        "in",
+        "reprehenderit",
+        "in",
+        "voluptate",
+        "velit",
+        "esse",
+        "cillum",
+        "dolore",
+        "eu",
+        "fugiat",
+        "nulla",
+        "pariatur",
+        "excepteur",
+        "sint",
+        "occaecat",
+        "cupidatat",
+        "non",
+        "proident",
+        "sunt",
+        "in",
+        "culpa",
+        "qui",
+        "officia",
+        "deserunt",
+        "mollit",
+        "anim",
+        "id",
+        "est",
+        "laborum",
+    ];
+
+    let mut rng = rand::thread_rng();
+    let mut result = Vec::new();
+    let count = count.max(1).min(100); // Limit count
+
+    match mode {
+        "words" => {
+            for _ in 0..count {
+                result.push(words.choose(&mut rng).unwrap().to_string());
+            }
+            result.join(" ")
+        }
+        "sentences" => {
+            for _ in 0..count {
+                let len = rng.gen_range(5..15);
+                let mut sentence = Vec::new();
+                for i in 0..len {
+                    let w = words.choose(&mut rng).unwrap();
+                    if i == 0 {
+                        let mut c = w.chars();
+                        match c.next() {
+                            None => sentence.push(w.to_string()),
+                            Some(f) => {
+                                sentence.push(f.to_uppercase().collect::<String>() + c.as_str())
+                            }
+                        }
+                    } else {
+                        sentence.push(w.to_string());
+                    }
+                }
+                result.push(sentence.join(" ") + ".");
+            }
+            result.join(" ")
+        }
+        _ => {
+            // paragraphs
+            for _ in 0..count {
+                let s_len = rng.gen_range(3..8);
+                let mut para = Vec::new();
+                for _ in 0..s_len {
+                    let len = rng.gen_range(5..15);
+                    let mut sentence = Vec::new();
+                    for i in 0..len {
+                        let w = words.choose(&mut rng).unwrap();
+                        if i == 0 {
+                            let mut c = w.chars();
+                            match c.next() {
+                                None => sentence.push(w.to_string()),
+                                Some(f) => {
+                                    sentence.push(f.to_uppercase().collect::<String>() + c.as_str())
+                                }
+                            }
+                        } else {
+                            sentence.push(w.to_string());
+                        }
+                    }
+                    para.push(sentence.join(" ") + ".");
+                }
+                result.push(para.join(" "));
+            }
+            result.join("\n\n")
+        }
+    }
+}
+
+// --- 35. Rsync Command ---
+#[derive(Serialize)]
+pub struct RsyncResponse {
+    pub command: String,
+    pub ssh_config: String,
+}
+pub fn generate_rsync(
+    source: &str,
+    user: &str,
+    host: &str,
+    port: &str,
+    remote_path: &str,
+    archive: bool,
+    compress: bool,
+    verbose: bool,
+    delete: bool,
+    dry_run: bool,
+    progress: bool,
+    ssh: bool,
+    exclude: &str,
+) -> RsyncResponse {
+    let mut cmd = String::from("rsync");
+
+    // Short options
+    let mut shorts = String::new();
+    if archive {
+        shorts.push('a');
+    }
+    if compress {
+        shorts.push('z');
+    }
+    if verbose {
+        shorts.push('v');
+    }
+    if dry_run {
+        shorts.push('n');
+    }
+    if progress {
+        shorts.push('P');
+    }
+
+    if !shorts.is_empty() {
+        cmd.push_str(" -");
+        cmd.push_str(&shorts);
+    }
+
+    // Long options
+    if delete {
+        cmd.push_str(" --delete");
+    }
+    if !port.trim().is_empty() && port.trim() != "22" {
+        cmd.push_str(&format!(" -e 'ssh -p {}'", port.trim()));
+    } else if ssh {
+        cmd.push_str(" -e ssh");
+    }
+    if !exclude.trim().is_empty() {
+        cmd.push_str(" --exclude='");
+        cmd.push_str(exclude.trim());
+        cmd.push('\'');
+    }
+
+    // Source
+    if !source.trim().is_empty() {
+        cmd.push(' ');
+        cmd.push_str(source.trim());
+    } else {
+        cmd.push_str(" /source/path");
+    }
+
+    // Dest
+    cmd.push(' ');
+    if !host.trim().is_empty() {
+        // Remote destination
+        if !user.trim().is_empty() {
+            cmd.push_str(user.trim());
+            cmd.push('@');
+        }
+        cmd.push_str(host.trim());
+        cmd.push(':');
+        if !remote_path.trim().is_empty() {
+            cmd.push_str(remote_path.trim());
+        }
+    } else {
+        // Local destination or missing host
+        if !remote_path.trim().is_empty() {
+            cmd.push_str(remote_path.trim());
+        } else {
+            cmd.push_str("/dest/path");
+        }
+    }
+
+    // Generate SSH Config
+    let mut ssh_config = String::new();
+    if !host.trim().is_empty() {
+        ssh_config.push_str(&format!("Host {}\n", host.trim()));
+        ssh_config.push_str(&format!("    HostName {}\n", host.trim()));
+        if !user.trim().is_empty() {
+            ssh_config.push_str(&format!("    User {}\n", user.trim()));
+        }
+        if !port.trim().is_empty() && port.trim() != "22" {
+            ssh_config.push_str(&format!("    Port {}\n", port.trim()));
+        }
+    }
+
+    RsyncResponse {
+        command: cmd,
+        ssh_config,
+    }
+}
+
+// --- 36. Fake User Generator ---
+#[derive(Serialize)]
+pub struct FakeUser {
+    pub name: String,
+    pub email: String,
+    pub address: String,
+    pub phone: String,
+}
+
+pub fn generate_fake_users(count: usize, locale: &str) -> Vec<FakeUser> {
+    let mut rng = rand::thread_rng();
+    let mut users = Vec::new();
+    let count = count.max(1).min(50);
+
+    let (first_names, last_names, domains, streets, cities) = if locale == "cn" {
+        (
+            vec![
+                "伟", "芳", "娜", "敏", "静", "秀英", "丽", "强", "磊", "军", "洋", "勇", "艳",
+                "杰", "娟", "涛", "明", "超", "秀兰", "霞",
+            ],
+            vec![
+                "王", "李", "张", "刘", "陈", "杨", "黄", "赵", "吴", "周", "徐", "孙", "马", "朱",
+                "胡", "郭", "何", "高", "林", "罗",
+            ],
+            vec!["qq.com", "163.com", "sina.com", "gmail.com", "outlook.com"],
+            vec![
+                "人民路",
+                "建设路",
+                "解放路",
+                "和平路",
+                "中山路",
+                "文化路",
+                "南京路",
+                "北京路",
+            ],
+            vec![
+                "北京", "上海", "广州", "深圳", "杭州", "成都", "武汉", "西安", "南京", "重庆",
+            ],
+        )
+    } else {
+        (
+            vec![
+                "James",
+                "Mary",
+                "John",
+                "Patricia",
+                "Robert",
+                "Jennifer",
+                "Michael",
+                "Linda",
+                "William",
+                "Elizabeth",
+                "David",
+                "Barbara",
+                "Richard",
+                "Susan",
+                "Joseph",
+                "Jessica",
+            ],
+            vec![
+                "Smith",
+                "Johnson",
+                "Williams",
+                "Brown",
+                "Jones",
+                "Garcia",
+                "Miller",
+                "Davis",
+                "Rodriguez",
+                "Martinez",
+                "Hernandez",
+                "Lopez",
+                "Gonzalez",
+                "Wilson",
+            ],
+            vec![
+                "gmail.com",
+                "yahoo.com",
+                "hotmail.com",
+                "outlook.com",
+                "example.com",
+            ],
+            vec![
+                "Main St",
+                "High St",
+                "Broadway",
+                "Market St",
+                "Park Ave",
+                "Oak St",
+                "Washington St",
+            ],
+            vec![
+                "New York",
+                "Los Angeles",
+                "Chicago",
+                "Houston",
+                "Phoenix",
+                "Philadelphia",
+                "San Antonio",
+                "San Diego",
+            ],
+        )
+    };
+
+    for _ in 0..count {
+        let first = first_names.choose(&mut rng).unwrap();
+        let last = last_names.choose(&mut rng).unwrap();
+        let domain = domains.choose(&mut rng).unwrap();
+
+        let name = if locale == "cn" {
+            format!("{}{}", last, first)
+        } else {
+            format!("{} {}", first, last)
+        };
+
+        let email = if locale == "cn" {
+            let r: u32 = rng.gen_range(10000..99999);
+            format!("user{}@{}", r, domain)
+        } else {
+            format!(
+                "{}.{}@{}",
+                first.to_lowercase(),
+                last.to_lowercase(),
+                domain
+            )
+        };
+
+        let address = if locale == "cn" {
+            let city = cities.choose(&mut rng).unwrap();
+            let street = streets.choose(&mut rng).unwrap();
+            let no = rng.gen_range(1..999);
+            format!("{}市{} {}号", city, street, no)
+        } else {
+            let city = cities.choose(&mut rng).unwrap();
+            let street = streets.choose(&mut rng).unwrap();
+            let no = rng.gen_range(1..9999);
+            format!("{} {}, {}", no, street, city)
+        };
+
+        let phone = if locale == "cn" {
+            format!(
+                "1{}{}",
+                rng.gen_range(3..=9),
+                rng.gen_range(100000000..999999999)
+            )
+        } else {
+            format!(
+                "+1-{}-{}-{}",
+                rng.gen_range(200..999),
+                rng.gen_range(200..999),
+                rng.gen_range(1000..9999)
+            )
+        };
+
+        users.push(FakeUser {
+            name,
+            email,
+            address,
+            phone,
+        });
+    }
+    users
 }

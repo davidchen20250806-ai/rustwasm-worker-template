@@ -102,6 +102,7 @@ struct Md5Request {
 #[derive(Deserialize)]
 struct ChmodRequest {
     octal: String,
+    file: String,
 }
 #[derive(Deserialize)]
 struct UrlRequest {
@@ -257,6 +258,32 @@ struct NginxRequest {
     proxy_read_timeout: String,
     proxy_send_timeout: String,
 }
+#[derive(Deserialize)]
+struct LoremRequest {
+    count: usize,
+    mode: String,
+}
+#[derive(Deserialize)]
+struct RsyncRequest {
+    source: String,
+    user: String,
+    host: String,
+    port: String,
+    remote_path: String,
+    archive: bool,
+    compress: bool,
+    verbose: bool,
+    delete: bool,
+    dry_run: bool,
+    progress: bool,
+    ssh: bool,
+    exclude: String,
+}
+#[derive(Deserialize)]
+struct FakeUserRequest {
+    count: usize,
+    locale: String,
+}
 
 #[derive(Serialize)]
 struct GenericResponse {
@@ -293,6 +320,19 @@ struct JsonResponse {
 struct YamlResponse {
     result: String,
     error: Option<String>,
+}
+#[derive(Serialize)]
+struct WhoamiResponse {
+    ip: String,
+    country: String,
+    city: String,
+    asn: String,
+    user_agent: String,
+    headers: std::collections::HashMap<String, String>,
+}
+#[derive(Serialize)]
+struct FakeUserResponse {
+    users: Vec<utils::FakeUser>,
 }
 
 #[event(fetch)]
@@ -405,7 +445,7 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
         })
         .post_async("/api/chmod", |mut req, _| async move {
             let data: ChmodRequest = req.json().await?;
-            Response::from_json(&utils::calculate_chmod(&data.octal))
+            Response::from_json(&utils::calculate_chmod(&data.octal, &data.file))
         })
         .post_async("/api/yaml-to-toml", |mut req, _| async move {
             let data: YamlRequest = req.json().await?;
@@ -627,6 +667,78 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
                     &data.proxy_read_timeout,
                     &data.proxy_send_timeout,
                 ),
+            })
+        })
+        .post_async("/api/lorem", |mut req, _| async move {
+            let data: LoremRequest = req.json().await?;
+            Response::from_json(&GenericResponse {
+                result: utils::generate_lorem(data.count, &data.mode),
+            })
+        })
+        .post_async("/api/rsync", |mut req, _| async move {
+            let data: RsyncRequest = req.json().await?;
+            Response::from_json(&utils::generate_rsync(
+                &data.source,
+                &data.user,
+                &data.host,
+                &data.port,
+                &data.remote_path,
+                data.archive,
+                data.compress,
+                data.verbose,
+                data.delete,
+                data.dry_run,
+                data.progress,
+                data.ssh,
+                &data.exclude,
+            ))
+        })
+        .post_async("/api/fake-user", |mut req, _| async move {
+            let data: FakeUserRequest = req.json().await?;
+            Response::from_json(&FakeUserResponse {
+                users: utils::generate_fake_users(data.count, &data.locale),
+            })
+        })
+        .post_async("/api/whoami", |req, _| async move {
+            let headers = req.headers();
+            let ip = headers
+                .get("cf-connecting-ip")
+                .ok()
+                .flatten()
+                .unwrap_or_else(|| "Unknown".into());
+            let country = headers
+                .get("cf-ipcountry")
+                .ok()
+                .flatten()
+                .unwrap_or_else(|| "-".into());
+            let city = headers
+                .get("cf-ipcity")
+                .ok()
+                .flatten()
+                .unwrap_or_else(|| "-".into());
+            let asn = headers
+                .get("cf-ray")
+                .ok()
+                .flatten()
+                .unwrap_or_else(|| "-".into());
+            let ua = headers
+                .get("user-agent")
+                .ok()
+                .flatten()
+                .unwrap_or_else(|| "-".into());
+
+            let mut header_map = std::collections::HashMap::new();
+            for (k, v) in headers.entries() {
+                header_map.insert(k, v);
+            }
+
+            Response::from_json(&WhoamiResponse {
+                ip,
+                country,
+                city,
+                asn,
+                user_agent: ua,
+                headers: header_map,
             })
         })
         .run(req, env)

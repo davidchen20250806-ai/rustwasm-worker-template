@@ -360,6 +360,7 @@ pub fn get_homepage() -> &'static str {
             <div class="menu-group">
                 <div class="menu-cat" onclick="toggleGroup(this)"><span>开发 & 运维</span><span class="menu-arrow">▼</span></div>
                 <ul class="menu-list">
+                    <li><a class="link" onclick="nav('whoami', this)"><span class="icon">🆔</span>IP & 请求信息</a></li>
                     <li><a class="link active" onclick="nav('sql', this)"><span class="icon">🗄️</span>SQL 格式化</a></li>
                     <li><a class="link" onclick="nav('cron', this)"><span class="icon">⏰</span>Cron 生成</a></li>
                     <li><a class="link" onclick="nav('subnet', this)"><span class="icon">🌐</span>网络子网计算</a></li>
@@ -373,6 +374,7 @@ pub fn get_homepage() -> &'static str {
                 <div class="menu-cat" onclick="toggleGroup(this)"><span>Linux 命令</span><span class="menu-arrow">▼</span></div>
                 <ul class="menu-list">
                     <li><a class="link" onclick="nav('ls', this)"><span class="icon">📂</span>列出文件 (Ls)</a></li>
+                    <li><a class="link" onclick="nav('rsync', this)"><span class="icon">🔄</span>文件同步 (Rsync)</a></li>
                     <li><a class="link" onclick="nav('git', this)"><span class="icon">🎋</span>Git 命令</a></li>
                     <li><a class="link" onclick="nav('chmod', this)"><span class="icon">🐧</span>权限 (Chmod)</a></li>
                     <li><a class="link" onclick="nav('tar', this)"><span class="icon">📦</span>压缩 (Tar)</a></li>
@@ -389,6 +391,8 @@ pub fn get_homepage() -> &'static str {
             <div class="menu-group">
                 <div class="menu-cat" onclick="toggleGroup(this)"><span>文本处理</span><span class="menu-arrow">▼</span></div>
                 <ul class="menu-list">
+                    <li><a class="link" onclick="nav('fake-user', this)"><span class="icon">👤</span>虚拟身份生成</a></li>
+                    <li><a class="link" onclick="nav('lorem', this)"><span class="icon">📝</span>Lorem Ipsum</a></li>
                     <li><a class="link" onclick="nav('case', this)"><span class="icon">Aa</span>变量命名转换</a></li>
                     <li><a class="link" onclick="nav('escape', this)"><span class="icon">🔣</span>文本转义</a></li>
                     <li><a class="link" onclick="nav('json', this)"><span class="icon">📋</span>JSON 工具</a></li>
@@ -407,6 +411,7 @@ pub fn get_homepage() -> &'static str {
                     <li><a class="link" onclick="nav('password', this)"><span class="icon">🔑</span>密码生成</a></li>
                     <li><a class="link" onclick="nav('token', this)"><span class="icon">🎟️</span>Token 生成</a></li>
                     <li><a class="link" onclick="nav('uuid', this)"><span class="icon">🆔</span>UUID 生成</a></li>
+                    <li><a class="link" onclick="nav('ssh-key', this)"><span class="icon">🗝️</span>SSH 密钥生成</a></li>
                     <li><a class="link" onclick="nav('jsenc', this)"><span class="icon">🔒</span>JS 混淆</a></li>
                 </ul>
             </div>
@@ -428,6 +433,46 @@ pub fn get_homepage() -> &'static str {
     </aside>
 
     <main class="main">
+        <div id="whoami" class="panel">
+            <h2>IP & 请求信息 (Whoami)</h2>
+            <div class="info-grid-2">
+                <div class="info-item"><span class="info-label">IP 地址</span><span id="wa-ip" class="info-val">-</span><button class="icon-btn" onclick="copy('wa-ip')"><svg><use href="#i-copy"></use></svg></button></div>
+                <div class="info-item"><span class="info-label">国家/地区</span><span id="wa-country" class="info-val">-</span></div>
+                <div class="info-item"><span class="info-label">城市</span><span id="wa-city" class="info-val">-</span></div>
+                <div class="info-item"><span class="info-label">Ray ID</span><span id="wa-asn" class="info-val">-</span></div>
+                <div class="info-item" style="grid-column: span 2"><span class="info-label">User Agent</span><span id="wa-ua" class="info-val" style="font-size:12px">-</span><button class="icon-btn" onclick="copy('wa-ua')"><svg><use href="#i-copy"></use></svg></button></div>
+            </div>
+            <div style="font-size:12px; color:#64748b; margin-bottom:8px; font-weight:bold; margin-top:20px;">所有请求头 (Headers)</div>
+            <div class="editor-box" style="height:300px">
+                <textarea id="wa-headers" class="editor-content" readonly style="font-size:12px"></textarea>
+            </div>
+            <button class="btn" style="width:100%" onclick="doWhoami()">🔄 刷新信息</button>
+        </div>
+
+        <div id="lorem" class="panel">
+            <h2>Lorem Ipsum 生成</h2>
+            <div class="row">
+                <input type="number" id="li-count" value="3" style="width:80px" min="1" max="100">
+                <select id="li-mode" style="flex:1"><option value="paragraphs">段落 (Paragraphs)</option><option value="sentences">句子 (Sentences)</option><option value="words">单词 (Words)</option></select>
+                <button class="btn" onclick="doLorem()">生成</button>
+            </div>
+            <div class="editor-box" style="height:400px"><div class="editor-header"><span>结果</span><button class="icon-btn" onclick="copy('li-res')"><svg><use href="#i-copy"></use></svg></button></div><textarea id="li-res" class="editor-content" readonly></textarea></div>
+        </div>
+
+        <div id="fake-user" class="panel">
+            <h2>虚拟身份生成 (Fake User)</h2>
+            <div class="row">
+                <span>生成数量:</span>
+                <input type="number" id="fu-count" value="5" style="width:80px" min="1" max="50">
+                <select id="fu-locale" style="width:120px">
+                    <option value="en">English (US)</option>
+                    <option value="cn">中文 (China)</option>
+                </select>
+                <button class="btn" onclick="doFakeUser()">🎲 生成数据</button>
+            </div>
+            <div class="editor-box" style="height:400px"><div class="editor-header"><span>结果 (JSON)</span><button class="icon-btn" onclick="copy('fu-res')"><svg><use href="#i-copy"></use></svg></button></div><textarea id="fu-res" class="editor-content" readonly></textarea></div>
+        </div>
+
         <div id="regex" class="panel">
             <h2>正则测试</h2>
             <div class="row">
@@ -652,6 +697,28 @@ pub fn get_homepage() -> &'static str {
             <div class="editor-box" style="height:300px">
                 <div class="editor-header"><span>结果</span><button class="icon-btn" onclick="copy('uid-res')" title="复制"><svg><use href="#i-copy"></use></svg></button></div>
                 <textarea id="uid-res" class="editor-content" readonly></textarea>
+            </div>
+        </div>
+
+        <div id="ssh-key" class="panel">
+            <h2>SSH 密钥生成 (RSA)</h2>
+            <div class="row">
+                <select id="ssh-algo" style="flex:1"><option value="2048">RSA 2048-bit</option><option value="4096">RSA 4096-bit</option></select>
+                <input id="ssh-comment" placeholder="user@host (注释)" value="user@example.com" style="flex:1">
+                <button class="btn" onclick="doSshKey()">⚙️ 生成密钥对</button>
+            </div>
+            <div class="editor-container" style="height:450px">
+                <div class="editor-box">
+                    <div class="editor-header"><span>私钥 (Private Key - PEM)</span><button class="icon-btn" onclick="copy('ssh-priv')"><svg><use href="#i-copy"></use></svg></button></div>
+                    <textarea id="ssh-priv" class="editor-content" readonly style="font-size:12px"></textarea>
+                </div>
+                <div class="editor-box">
+                    <div class="editor-header"><span>公钥 (Public Key - OpenSSH)</span><button class="icon-btn" onclick="copy('ssh-pub')"><svg><use href="#i-copy"></use></svg></button></div>
+                    <textarea id="ssh-pub" class="editor-content" readonly style="font-size:12px"></textarea>
+                </div>
+            </div>
+            <div class="row" style="justify-content: center;">
+                <button class="btn secondary" onclick="downloadSshKeys()">💾 下载密钥文件</button>
             </div>
         </div>
 
@@ -889,10 +956,14 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
                     <input id="chmod-octal" value="755" oninput="upChmod(false)" style="border:none; background:transparent; font-family:monospace; font-size:24px; width:100%; color:var(--primary); font-weight:bold; outline:none;">
                 </div>
                 <div class="result-card" style="grid-column: span 3;">
-                    <div class="result-label">Linux Command</div>
-                    <div id="chmod-command" class="result-val" style="font-size:16px; display:flex; align-items:center; height:36px;">chmod 755 filename</div>
-                    <button class="icon-btn" onclick="copy('chmod-command')"><svg><use href="#i-copy"></use></svg></button>
+                    <div class="result-label">文件名 (Filename)</div>
+                    <input id="chmod-file" placeholder="filename" oninput="upChmod(false)" style="border:none; background:transparent; font-family:monospace; font-size:18px; width:100%; color:var(--text); outline:none;">
                 </div>
+            </div>
+            <div class="result-card" style="margin-top:15px">
+                <div class="result-label">Linux Command</div>
+                <div id="chmod-command" class="result-val" style="font-size:16px; display:flex; align-items:center; min-height:36px;">chmod 755 filename</div>
+                <button class="icon-btn" onclick="copy('chmod-command')"><svg><use href="#i-copy"></use></svg></button>
             </div>
         </div>
 
@@ -1107,6 +1178,33 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
                 <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="ls-c" checked onchange="doLs()" style="width:18px;height:18px;accent-color:var(--primary)"> 颜色 (--color)</label>
             </div>
             <div class="result-card"><div class="result-label">生成的命令</div><div id="ls-cmd" class="result-val" style="font-size:16px; display:flex; align-items:center; min-height:36px;">ls --color=auto</div><button class="icon-btn" onclick="copy('ls-cmd')"><svg><use href="#i-copy"></use></svg></button></div>
+        </div>
+
+        <div id="rsync" class="panel">
+            <h2>文件同步 (Rsync)</h2>
+            <div class="grid-4" style="margin-bottom:15px">
+                <div style="grid-column: span 2"><div class="cron-label">源路径 (Source)</div><input id="rs-src" placeholder="/local/path/" oninput="doRsync()"></div>
+                <div><div class="cron-label">用户名 (User)</div><input id="rs-user" placeholder="root" oninput="doRsync()"></div>
+                <div><div class="cron-label">目标主机 (Host)</div><input id="rs-host" placeholder="192.168.1.100" oninput="doRsync()"></div>
+                <div><div class="cron-label">端口 (Port)</div><input id="rs-port" placeholder="22" oninput="doRsync()"></div>
+                <div><div class="cron-label">远程路径 (Path)</div><input id="rs-path" placeholder="/var/www/" oninput="doRsync()"></div>
+            </div>
+            <div class="grid-4" style="margin-bottom:20px; background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0;">
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="rs-a" checked onchange="doRsync()" style="width:18px;height:18px;accent-color:var(--primary)"> 归档模式 (-a)</label>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="rs-z" checked onchange="doRsync()" style="width:18px;height:18px;accent-color:var(--primary)"> 压缩传输 (-z)</label>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="rs-v" checked onchange="doRsync()" style="width:18px;height:18px;accent-color:var(--primary)"> 详细输出 (-v)</label>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="rs-P" checked onchange="doRsync()" style="width:18px;height:18px;accent-color:var(--primary)"> 显示进度 (-P)</label>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="rs-del" onchange="doRsync()" style="width:18px;height:18px;accent-color:var(--primary)"> 删除目标多余文件 (--delete)</label>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="rs-n" onchange="doRsync()" style="width:18px;height:18px;accent-color:var(--primary)"> 试运行 (--dry-run)</label>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="rs-ssh" onchange="doRsync()" style="width:18px;height:18px;accent-color:var(--primary)"> 使用 SSH (-e ssh)</label>
+            </div>
+            <div style="margin-bottom:20px"><div class="cron-label">排除模式 (--exclude)</div><input id="rs-ex" placeholder="*.tmp" oninput="doRsync()"></div>
+            <div class="result-card"><div class="result-label">生成的命令</div><div id="rs-cmd" class="result-val" style="font-size:16px; display:flex; align-items:center; min-height:36px;">rsync -azvP /local/path/ user@host:/remote/path/</div><button class="icon-btn" onclick="copy('rs-cmd')"><svg><use href="#i-copy"></use></svg></button></div>
+            <div class="result-card" style="margin-top:15px">
+                <div class="result-label">SSH Config Entry (~/.ssh/config)</div>
+                <textarea id="rs-ssh-conf" class="result-val" style="width:100%; height:90px; background:transparent; border:none; resize:none; outline:none; font-family:monospace; line-height:1.5;" readonly placeholder="# Fill in Host to generate config"></textarea>
+                <button class="icon-btn" onclick="copy('rs-ssh-conf')"><svg><use href="#i-copy"></use></svg></button>
+            </div>
         </div>
 
         <div id="firewall" class="panel">
@@ -1780,6 +1878,107 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
         }
         async function doReg() { testRegex(); } // Mapping old call to new logic
         async function doUuid() { try{let d=await post('/uuid',{count:parseInt(document.getElementById('uid-n').value),hyphens:true,uppercase:false});document.getElementById('uid-res').value=d.uuids.join('\n');}catch(e){} }
+        
+        // SSH Key Generator Logic
+        async function doSshKey() {
+            const bits = parseInt(document.getElementById('ssh-algo').value);
+            const comment = document.getElementById('ssh-comment').value;
+            const btn = document.querySelector('#ssh-key .btn');
+            const originalText = btn.innerText;
+            
+            try {
+                btn.innerText = "生成中...";
+                btn.disabled = true;
+                
+                // 1. Generate Key Pair
+                const keys = await window.crypto.subtle.generateKey(
+                    { name: "RSASSA-PKCS1-v1_5", modulusLength: bits, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" },
+                    true, ["sign", "verify"]
+                );
+
+                // 2. Export Private Key (PKCS#8 -> PEM)
+                const pkcs8 = await window.crypto.subtle.exportKey("pkcs8", keys.privateKey);
+                const privBody = btoa(String.fromCharCode(...new Uint8Array(pkcs8))).match(/.{1,64}/g).join('\n');
+                const privPem = `-----BEGIN PRIVATE KEY-----\n${privBody}\n-----END PRIVATE KEY-----`;
+
+                // 3. Export Public Key (JWK -> OpenSSH)
+                const jwk = await window.crypto.subtle.exportKey("jwk", keys.publicKey);
+                const pubSsh = await jwkToOpenSsh(jwk, comment);
+
+                document.getElementById('ssh-priv').value = privPem;
+                document.getElementById('ssh-pub').value = pubSsh;
+                toast('密钥生成成功');
+            } catch(e) {
+                console.error(e);
+                toast('生成失败: ' + e.message, 'error');
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        async function jwkToOpenSsh(jwk, comment) {
+            const b64uToBuf = (str) => {
+                const bin = atob(str.replace(/-/g, '+').replace(/_/g, '/'));
+                const buf = new Uint8Array(bin.length);
+                for(let i=0; i<bin.length; i++) buf[i] = bin.charCodeAt(i);
+                return buf;
+            };
+            
+            const e = b64uToBuf(jwk.e);
+            const n = b64uToBuf(jwk.n);
+            const type = "ssh-rsa";
+            
+            // Helper to write [length][data]
+            const parts = [type, e, n];
+            let totalLen = 0;
+            parts.forEach(p => {
+                totalLen += 4; // length field
+                if (typeof p === 'string') totalLen += p.length;
+                else {
+                    totalLen += p.length;
+                    if (p[0] & 0x80) totalLen++; // padding for mpint if MSB set
+                }
+            });
+
+            const buf = new Uint8Array(totalLen);
+            let offset = 0;
+            const view = new DataView(buf.buffer);
+
+            parts.forEach(p => {
+                if (typeof p === 'string') {
+                    view.setUint32(offset, p.length);
+                    offset += 4;
+                    for(let i=0; i<p.length; i++) buf[offset++] = p.charCodeAt(i);
+                } else {
+                    let pad = (p[0] & 0x80) ? 1 : 0;
+                    view.setUint32(offset, p.length + pad);
+                    offset += 4;
+                    if(pad) buf[offset++] = 0;
+                    buf.set(p, offset);
+                    offset += p.length;
+                }
+            });
+
+            const b64 = btoa(String.fromCharCode(...buf));
+            return `${type} ${b64} ${comment}`;
+        }
+
+        function downloadSshKeys() {
+            const priv = document.getElementById('ssh-priv').value;
+            const pub = document.getElementById('ssh-pub').value;
+            if(!priv || !pub) return toast('请先生成密钥', 'error');
+            
+            const dl = (content, name) => {
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(new Blob([content], {type: 'text/plain'}));
+                a.download = name;
+                a.click();
+            };
+            dl(priv, 'id_rsa');
+            setTimeout(() => dl(pub, 'id_rsa.pub'), 500);
+        }
+
         async function doJwt() { try{let d=await post('/jwt',{token:document.getElementById('jwt-in').value});if(!d.error){document.getElementById('jwt-h').value=d.header;document.getElementById('jwt-p').value=d.payload;}}catch(e){} }
         async function doB64(a) { 
           let v=document.getElementById('b64-in').value;
@@ -1858,7 +2057,7 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
           }
         }
         function upChmod(c){let u=(document.getElementById('c_ur').checked?4:0)+(document.getElementById('c_uw').checked?2:0)+(document.getElementById('c_ux').checked?1:0),g=(document.getElementById('c_gr').checked?4:0)+(document.getElementById('c_gw').checked?2:0)+(document.getElementById('c_gx').checked?1:0),o=(document.getElementById('c_or').checked?4:0)+(document.getElementById('c_ow').checked?2:0)+(document.getElementById('c_ox').checked?1:0);if(c)document.getElementById('chmod-octal').value=""+u+g+o;else{let v=document.getElementById('chmod-octal').value;if(v.length===3){let n=v.split('').map(Number);if(n.every(x=>x>=0&&x<=7)){u=n[0];g=n[1];o=n[2];document.getElementById('c_ur').checked=u&4;document.getElementById('c_uw').checked=u&2;document.getElementById('c_ux').checked=u&1;document.getElementById('c_gr').checked=g&4;document.getElementById('c_gw').checked=g&2;document.getElementById('c_gx').checked=g&1;document.getElementById('c_or').checked=o&4;document.getElementById('c_ow').checked=o&2;document.getElementById('c_ox').checked=o&1}}}fetchChmod(document.getElementById('chmod-octal').value)}
-        async function fetchChmod(o){try{let d=await post('/chmod',{octal:o});if(d.valid)document.getElementById('chmod-command').innerText=d.command;}catch(e){} }
+        async function fetchChmod(o){try{let f=document.getElementById('chmod-file').value;let d=await post('/chmod',{octal:o,file:f});if(d.valid)document.getElementById('chmod-command').innerText=d.command;}catch(e){} }
         async function doTar() { try{let d=await post('/tar',{op:document.getElementById('tar-op').value,comp:document.getElementById('tar-comp').value,verbose:document.getElementById('tar-v').checked,archive:document.getElementById('tar-arch').value,files:document.getElementById('tar-files').value});document.getElementById('tar-cmd').innerText=d.command;}catch(e){} }
         async function doPs() { try{let d=await post('/ps',{format:document.getElementById('ps-fmt').value,sort:document.getElementById('ps-sort').value,tree:document.getElementById('ps-tree').checked,filter:document.getElementById('ps-filter').value});document.getElementById('ps-cmd').innerText=d.command;}catch(e){} }
         async function doTcpdump() { try{let d=await post('/tcpdump',{interface:document.getElementById('td-if').value,protocol:document.getElementById('td-proto').value,host:document.getElementById('td-host').value,port:document.getElementById('td-port').value,verbose:document.getElementById('td-v').checked,ascii:document.getElementById('td-a').checked,hex:document.getElementById('td-x').checked,write_file:document.getElementById('td-w').value,count:document.getElementById('td-c').value});document.getElementById('td-cmd').innerText=d.command;}catch(e){} }
@@ -1969,6 +2168,27 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
                 document.getElementById('ls-cmd').innerText = d.command;
             } catch(e) {}
         }
+        async function doRsync() {
+            try {
+                let d = await post('/rsync', {
+                    source: document.getElementById('rs-src').value,
+                    user: document.getElementById('rs-user').value,
+                    host: document.getElementById('rs-host').value,
+                    port: document.getElementById('rs-port').value,
+                    remote_path: document.getElementById('rs-path').value,
+                    archive: document.getElementById('rs-a').checked,
+                    compress: document.getElementById('rs-z').checked,
+                    verbose: document.getElementById('rs-v').checked,
+                    progress: document.getElementById('rs-P').checked,
+                    delete: document.getElementById('rs-del').checked,
+                    dry_run: document.getElementById('rs-n').checked,
+                    ssh: document.getElementById('rs-ssh').checked,
+                    exclude: document.getElementById('rs-ex').value
+                });
+                document.getElementById('rs-cmd').innerText = d.command;
+                document.getElementById('rs-ssh-conf').value = d.ssh_config;
+            } catch(e) {}
+        }
         function updateFwUI() {
             const op = document.getElementById('fw-op').value;
             const isRule = op === 'add' || op === 'remove';
@@ -2076,8 +2296,38 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
                 document.getElementById('ng-res').value = d.result;
             } catch(e) {}
         }
+        async function doLorem() {
+            try {
+                let d = await post('/lorem', {
+                    count: parseInt(document.getElementById('li-count').value) || 3,
+                    mode: document.getElementById('li-mode').value
+                });
+                document.getElementById('li-res').value = d.result;
+            } catch(e) {}
+        }
+        async function doFakeUser() {
+            try {
+                let d = await post('/fake-user', {
+                    count: parseInt(document.getElementById('fu-count').value) || 5,
+                    locale: document.getElementById('fu-locale').value
+                });
+                document.getElementById('fu-res').value = JSON.stringify(d.users, null, 2);
+            } catch(e) {}
+        }
+        async function doWhoami() {
+            try {
+                let d = await post('/whoami', {});
+                document.getElementById('wa-ip').innerText = d.ip;
+                document.getElementById('wa-country').innerText = d.country;
+                document.getElementById('wa-city').innerText = d.city;
+                document.getElementById('wa-asn').innerText = d.asn;
+                document.getElementById('wa-ua').innerText = d.user_agent;
+                let h = ""; for(let k in d.headers) h += k + ": " + d.headers[k] + "\n";
+                document.getElementById('wa-headers').value = h;
+            } catch(e) {}
+        }
 
-        window.onload = () => { fillTime(); upCron(); upChmod(true); doTar(); doPs(); doTcpdump(); updateGitUI(); doGit(); doStrace(); doIostat(); doNice(); doLs(); doFirewall(); updateSysUI(); doSystemctl(); updateFindUI(); doFind(); };
+        window.onload = () => { fillTime(); upCron(); upChmod(true); doTar(); doPs(); doTcpdump(); updateGitUI(); doGit(); doStrace(); doIostat(); doNice(); doLs(); doFirewall(); updateSysUI(); doSystemctl(); updateFindUI(); doFind(); doWhoami(); doRsync(); };
     </script>
 </body>
 </html>
