@@ -945,14 +945,14 @@ hobbies:
 
 enabled: true"></textarea></div><div class="editor-box"><div class="editor-header">TOML 结果<button class="icon-btn" onclick="copy('toml-output')"><svg><use href="#i-copy"></use></svg></button></div><textarea id="toml-output" class="editor-content" readonly></textarea></div></div><button class="btn" style="width:100%" onclick="convertYaml()">🔄 转换</button></div>
         <div id="toml2yaml" class="panel"><h2>TOML 转 YAML</h2><div class="editor-container"><div class="editor-box"><div class="editor-header">TOML 输入</div><textarea id="toml-input" class="editor-content" placeholder="# 示例 TOML
-name = "John"
+name = &quot;John&quot;
 age = 30
 
 [address]
-city = "New York"
+city = &quot;New York&quot;
 zip = 10001
 
-hobbies = ["reading", "coding", "hiking"]
+hobbies = [&quot;reading&quot;, &quot;coding&quot;, &quot;hiking&quot;]
 
 enabled = true"></textarea></div><div class="editor-box"><div class="editor-header">YAML 结果<button class="icon-btn" onclick="copy('yaml-output')"><svg><use href="#i-copy"></use></svg></button></div><textarea id="yaml-output" class="editor-content" readonly></textarea></div></div><button class="btn" style="width:100%" onclick="convertToml()">🔄 转换</button></div>
         
@@ -2207,7 +2207,10 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
               return;
             }
             let d=await post('/yaml-to-toml',{yaml: yamlInput});
-            if (d && d.result) {
+            if (d.error) {
+              document.getElementById('toml-output').value='转换失败：' + d.error;
+              toast('转换失败', 'error');
+            } else if (d && d.result) {
               document.getElementById('toml-output').value=d.result;
               toast('转换成功', 'success');
             } else {
@@ -2228,7 +2231,10 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
               return;
             }
             let d=await post('/toml-to-yaml',{toml: tomlInput});
-            if (d && d.result) {
+            if (d.error) {
+              document.getElementById('yaml-output').value='转换失败：' + d.error;
+              toast('转换失败', 'error');
+            } else if (d && d.result) {
               document.getElementById('yaml-output').value=d.result;
               toast('转换成功', 'success');
             } else {
