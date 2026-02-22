@@ -8,7 +8,7 @@ pub fn get_homepage() -> &'static str {
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230ea5e9'/%3E%3Ctext x='50' y='50' dy='.35em' text-anchor='middle' font-size='70'%3E🦀%3C/text%3E%3C/svg%3E">
     <title>Rust 极客工具箱 - 免费在线开发者工具集合 (SQL/Cron/JSON/正则)</title>
     <meta name="description" content="基于 Rust 构建的高性能在线开发者工具箱。提供 SQL 格式化、Cron 表达式生成、子网掩码计算、文本对比、正则测试、JSON 格式化、Base64 编解码、UUID 生成等多种实用工具，无需下载，即开即用。">
-    <meta name="keywords" content="Rust, 开发者工具, 在线工具, SQL格式化, Cron表达式, 子网计算, 正则测试, JSON格式化, Base64, UUID生成, 程序员工具箱">
+    <meta name="keywords" content="Rust, 开发者工具, 在线工具, SQL格式化, Cron表达式, 子网计算, 正则表达式生成, JSON格式化, Base64, UUID生成, 程序员工具箱">
     <meta name="robots" content="index, follow">
     
     <!-- Open Graph / Social Sharing -->
@@ -372,7 +372,7 @@ pub fn get_homepage() -> &'static str {
                     <li><a class="link" onclick="nav('cron', this)"><span class="icon">⏰</span>Cron 生成</a></li>
                     <li><a class="link" onclick="nav('subnet', this)"><span class="icon">🌐</span>网络子网计算</a></li>
                     <li><a class="link" onclick="nav('diff', this)"><span class="icon">⚖️</span>文本对比</a></li>
-                    <li><a class="link" onclick="nav('regex', this)"><span class="icon">🔍</span>正则测试</a></li>
+                    <li><a class="link" onclick="nav('regex', this)"><span class="icon">🔍</span>正则表达式生成</a></li>
                     <li><a class="link" onclick="nav('dockerfile', this)"><span class="icon">🐳</span>Dockerfile 生成</a></li>
                     <li><a class="link" onclick="nav('nginx', this)"><span class="icon">🔧</span>Nginx 配置</a></li>
                     <li><a class="link" onclick="nav('curl', this)"><span class="icon">🔌</span>cURL 生成器</a></li>
