@@ -412,7 +412,6 @@ pub fn get_homepage() -> &'static str {
                     <li><a class="link" onclick="nav('url-parser', this)"><span class="icon">🧩</span>URL 解析器</a></li>
                     <li><a class="link" onclick="nav('yaml', this)"><span class="icon">⚙️</span>YAML 转 TOML</a></li>
                     <li><a class="link" onclick="nav('toml2yaml', this)"><span class="icon">⚙️</span>TOML 转 YAML</a></li>
-                    <li><a class="link" onclick="nav('unit', this)"><span class="icon">⚖️</span>单位换算</a></li>
                 </ul>
             </div>
             <div class="menu-group">
@@ -433,6 +432,7 @@ pub fn get_homepage() -> &'static str {
                     <li><a class="link" onclick="nav('date', this)"><span class="icon">📅</span>时间转换</a></li>
                     <li><a class="link" onclick="nav('color', this)"><span class="icon">🎨</span>颜色转换</a></li>
                     <li><a class="link" onclick="nav('qr', this)"><span class="icon">📱</span>二维码生成</a></li>
+                    <li><a class="link" onclick="nav('unit', this)"><span class="icon">⚖️</span>单位换算</a></li>
                 </ul>
             </div>
             <div class="menu-group">
@@ -502,7 +502,7 @@ pub fn get_homepage() -> &'static str {
         </div>
 
         <div id="regex" class="panel">
-            <h2>正则测试</h2>
+            <h2>正则表达式生成</h2>
             <div class="row">
                 <select id="reg-key" style="flex:1">
                     <option value="email">电子邮箱 (Email)</option>
@@ -517,10 +517,26 @@ pub fn get_homepage() -> &'static str {
                     <option value="html_tag">HTML 标签</option>
                 </select>
                 <button class="btn" onclick="doRegGen()">生成模板</button>
+                <button class="btn secondary" onclick="toggleRegBuilder()">🛠️ 自定义构建</button>
+            </div>
+            <div id="reg-builder" style="display:none; background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:15px;">
+                <div class="grid-4" style="margin-bottom:10px">
+                    <div><div class="cron-label">开头是 (Starts)</div><input id="rb-start" placeholder="abc" oninput="doRegBuild()"></div>
+                    <div><div class="cron-label">开头不是 (Not Starts)</div><input id="rb-not-start" placeholder="xyz" oninput="doRegBuild()"></div>
+                    <div><div class="cron-label">结尾是 (Ends)</div><input id="rb-end" placeholder="123" oninput="doRegBuild()"></div>
+                    <div><div class="cron-label">结尾不是 (Not Ends)</div><input id="rb-not-end" placeholder="tmp" oninput="doRegBuild()"></div>
+                </div>
+                <div class="grid-4">
+                    <div style="grid-column: span 2"><div class="cron-label">包含 (Contains)</div><input id="rb-has" placeholder="必须包含的内容" oninput="doRegBuild()"></div>
+                    <div style="grid-column: span 2"><div class="cron-label">不包含 (Not Contains)</div><input id="rb-not-has" placeholder="不能包含的内容" oninput="doRegBuild()"></div>
+                </div>
             </div>
             <div style="margin-bottom:15px">
                 <div class="cron-label">正则表达式 (Pattern)</div>
-                <input type="text" id="reg-p" placeholder="例如: ^\d+$" style="font-family:monospace; font-weight:bold; color:var(--primary);">
+                <div style="display:flex; gap:10px;">
+                    <input type="text" id="reg-p" placeholder="例如: ^\d+$" style="font-family:monospace; font-weight:bold; color:var(--primary); flex:1;">
+                    <button class="icon-btn" onclick="copy('reg-p')" title="复制正则"><svg><use href="#i-copy"></use></svg></button>
+                </div>
             </div>
             <div class="editor-container" style="height:300px">
                 <div class="editor-box">
@@ -1733,22 +1749,28 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
         }
 
         // Logic
-        async function testRegex() {
+        function testRegex() {
+            const pattern = document.getElementById('reg-p').value;
+            const text = document.getElementById('reg-t').value;
+            if(!pattern) return toast('请输入正则表达式', 'error');
+            
             try {
-                let d = await post('/regex', {pattern:document.getElementById('reg-p').value, text:document.getElementById('reg-t').value});
-                if (d.matches && d.matches.length > 0) {
-                    document.getElementById('reg-r').value = d.matches.join('\n');
-                    document.getElementById('reg-count').innerText = `(${d.count})`;
-                    toast(`匹配到 ${d.count} 项`);
-                } else if (d.error) {
-                    document.getElementById('reg-r').value = d.error;
-                    toast('正则语法错误', 'error');
+                const re = new RegExp(pattern, 'g');
+                const matches = text.match(re);
+                
+                if (matches && matches.length > 0) {
+                    document.getElementById('reg-r').value = matches.join('\n');
+                    document.getElementById('reg-count').innerText = `(${matches.length})`;
+                    toast(`匹配到 ${matches.length} 项`);
                 } else {
                     document.getElementById('reg-r').value = '';
                     document.getElementById('reg-count').innerText = '(0)';
                     toast('❌ 未匹配到任何内容', 'error');
                 }
-            } catch(e) {}
+            } catch(e) {
+                document.getElementById('reg-r').value = e.message;
+                toast('正则语法错误', 'error');
+            }
         }
 
         async function doSubnet() {
@@ -2061,6 +2083,26 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
             document.getElementById('reg-p').value='';
           }
         }
+        function toggleRegBuilder() {
+            const el = document.getElementById('reg-builder');
+            el.style.display = el.style.display === 'none' ? 'block' : 'none';
+        }
+        async function doRegBuild() {
+            try {
+                let d = await post('/regex-build', {
+                    starts_with: document.getElementById('rb-start').value,
+                    not_starts_with: document.getElementById('rb-not-start').value,
+                    ends_with: document.getElementById('rb-end').value,
+                    not_ends_with: document.getElementById('rb-not-end').value,
+                    contains: document.getElementById('rb-has').value,
+                    not_contains: document.getElementById('rb-not-has').value
+                });
+                document.getElementById('reg-p').value = d.pattern;
+                if(document.getElementById('reg-t').value) testRegex();
+            } catch(e) {
+                console.error(e);
+            }
+        }
         async function doReg() { testRegex(); } // Mapping old call to new logic
         async function doUuid() { try{let d=await post('/uuid',{count:parseInt(document.getElementById('uid-n').value),hyphens:true,uppercase:false});document.getElementById('uid-res').value=d.uuids.join('\n');}catch(e){} }
         
@@ -2164,7 +2206,20 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
             setTimeout(() => dl(pub, 'id_rsa.pub'), 500);
         }
 
-        async function doJwt() { try{let d=await post('/jwt',{token:document.getElementById('jwt-in').value});if(!d.error){document.getElementById('jwt-h').value=d.header;document.getElementById('jwt-p').value=d.payload;}}catch(e){} }
+        async function doJwt() { 
+            try {
+                let d = await post('/jwt', {token: document.getElementById('jwt-in').value});
+                if (d.error) {
+                    toast(d.error, 'error');
+                    document.getElementById('jwt-h').value = '解析失败: ' + d.error;
+                    document.getElementById('jwt-p').value = '';
+                } else {
+                    document.getElementById('jwt-h').value = d.header;
+                    document.getElementById('jwt-p').value = d.payload;
+                    toast('解析成功');
+                }
+            } catch(e) {} 
+        }
         async function doB64(a) { 
           let v=document.getElementById('b64-in').value;
           if(!v) {

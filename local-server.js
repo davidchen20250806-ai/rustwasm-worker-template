@@ -377,7 +377,7 @@ app.post('/api/regex-gen', (req, res) => {
     'ipv4': '^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$',
     'url': 'https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)',
     'date': '^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$',
-    'password': '^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-=\\[\\]{};\':,.<>/?])[A-Za-z\\d!@#$%^&*()_+\\-=\\[\\]{};\':,.<>/?]{8,}$',
+    'password': '^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-=\\[\\]{};\':,.<>/?|])[A-Za-z\\d!@#$%^&*()_+\\-=\\[\\]{};\':,.<>/?|]{8,}$',
     'hex_color': '^#?([a-fA-F0-9]{6}|[a-fA-F0-9]{3})$',
     'chinese': '\\p{Han}+',
     'html_tag': '</?[a-z][a-z0-9]*[^<>]*>'
@@ -389,6 +389,43 @@ app.post('/api/regex-gen', (req, res) => {
   }
 
   res.json({ result: '正则表达式生成成功', pattern: pattern });
+});
+
+app.post('/api/regex-build', (req, res) => {
+  const { starts_with, not_starts_with, ends_with, not_ends_with, contains, not_contains } = req.body;
+  
+  const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  let p = '^';
+
+  // Not Starts With
+  if (not_starts_with) {
+    p += `(?!${esc(not_starts_with)})`;
+  }
+  // Starts With
+  if (starts_with) {
+    p += esc(starts_with);
+  }
+  // Contains
+  if (contains) {
+    p += `(?=.*${esc(contains)})`;
+  }
+  // Not Contains (Middle)
+  if (not_contains) {
+    p += `(?:(?!${esc(not_contains)}).)*`;
+  } else {
+    p += '.*';
+  }
+  // Ends With
+  if (ends_with) {
+    p += esc(ends_with);
+  }
+  // Not Ends With
+  if (not_ends_with) {
+    p += `(?<!${esc(not_ends_with)})`;
+  }
+  p += '$';
+  
+  res.json({ pattern: p });
 });
 
 app.post('/api/regex', (req, res) => {
@@ -456,7 +493,7 @@ app.post('/api/password', (req, res) => {
   if (uppercase) charset.push('ABCDEFGHIJKLMNOPQRSTUVWXYZ');
   if (lowercase) charset.push('abcdefghijklmnopqrstuvwxyz');
   if (numbers) charset.push('0123456789');
-  if (symbols) charset.push('!@#$%^&*()_+-=[]{}|;:,.<>?');
+  if (symbols) charset.push('!@#$%^&*()_+-=[]{}|;:,.<>?/\'');
 
   const allChars = charset.join('');
   let password = '';
@@ -553,7 +590,26 @@ app.post('/api/uuid', (req, res) => {
 });
 
 app.post('/api/jwt', (req, res) => {
-  res.json({ header: '{}', payload: '{}', error: null });
+  const token = req.body.token || '';
+  const parts = token.split('.');
+  if (parts.length !== 3) {
+    res.json({ header: '', payload: '', error: 'Invalid Token Format' });
+    return;
+  }
+
+  const decode = (s) => {
+    try {
+      return Buffer.from(s.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
+    } catch (e) {
+      return 'Decode Error';
+    }
+  };
+
+  res.json({
+    header: decode(parts[0]),
+    payload: decode(parts[1]),
+    error: null
+  });
 });
 
 app.post('/api/base64', (req, res) => {

@@ -243,13 +243,64 @@ pub fn get_common_regex(key: &str) -> &'static str {
         }
         "date" => r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$",
         "password" => {
-            r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':,.<>/?])[A-Za-z\d!@#$%^&*()_+\-=\[\]{};':,.<>/?]{8,}$"
+            r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':,.<>/?|])[A-Za-z\d!@#$%^&*()_+\-=\[\]{};':,.<>/?|]{8,}$"
         }
         "hex_color" => r"^#?([a-fA-F0-9]{6}|[a-fA-F0-9]{3})$",
         "chinese" => r"\p{Han}+",
         "html_tag" => r"</?[a-z][a-z0-9]*[^<>]*>",
         _ => "",
     }
+}
+#[derive(Serialize)]
+pub struct RegexBuildResponse {
+    pub pattern: String,
+}
+pub fn generate_custom_regex(
+    starts_with: &str,
+    not_starts_with: &str,
+    ends_with: &str,
+    not_ends_with: &str,
+    contains: &str,
+    not_contains: &str,
+) -> RegexBuildResponse {
+    let esc = |s: &str| regex::escape(s);
+    let mut p = String::from("^");
+
+    // Not Starts With (Negative Lookahead)
+    if !not_starts_with.is_empty() {
+        p.push_str(&format!("(?!{})", esc(not_starts_with)));
+    }
+
+    // Starts With
+    if !starts_with.is_empty() {
+        p.push_str(&esc(starts_with));
+    }
+
+    // Contains (Positive Lookahead)
+    if !contains.is_empty() {
+        p.push_str(&format!("(?=.*{})", esc(contains)));
+    }
+
+    // Middle part (handling Not Contains)
+    if !not_contains.is_empty() {
+        // Match any character that does not start the "not_contains" sequence
+        p.push_str(&format!("(?:(?!{}).)*", esc(not_contains)));
+    } else {
+        p.push_str(".*");
+    }
+
+    // Ends With
+    if !ends_with.is_empty() {
+        p.push_str(&esc(ends_with));
+    }
+
+    // Not Ends With (Negative Lookbehind)
+    if !not_ends_with.is_empty() {
+        p.push_str(&format!("(?<!{})", esc(not_ends_with)));
+    }
+
+    p.push('$');
+    RegexBuildResponse { pattern: p }
 }
 
 // --- 6. UUID ---
@@ -328,7 +379,7 @@ pub fn generate_password_strong(len: usize, u: bool, l: bool, n: bool, s: bool) 
         add_set("0123456789");
     }
     if s {
-        add_set("!@#$%^&*()_+-=[]{}|;:,.<>?");
+        add_set("!@#$%^&*()_+-=[]{}|;:,.<>?/'");
     }
 
     if charset.is_empty() {

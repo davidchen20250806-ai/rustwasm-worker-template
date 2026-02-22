@@ -325,6 +325,15 @@ struct SedRequest {
     inplace: bool,
     file: String,
 }
+#[derive(Deserialize)]
+struct RegexBuildRequest {
+    starts_with: String,
+    not_starts_with: String,
+    ends_with: String,
+    not_ends_with: String,
+    contains: String,
+    not_contains: String,
+}
 
 #[derive(Serialize)]
 struct GenericResponse {
@@ -829,6 +838,17 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
                 &data.flags,
                 data.inplace,
                 &data.file,
+            ))
+        })
+        .post_async("/api/regex-build", |mut req, _| async move {
+            let data: RegexBuildRequest = req.json().await?;
+            Response::from_json(&utils::generate_custom_regex(
+                &data.starts_with,
+                &data.not_starts_with,
+                &data.ends_with,
+                &data.not_ends_with,
+                &data.contains,
+                &data.not_contains,
             ))
         })
         .run(req, env)
