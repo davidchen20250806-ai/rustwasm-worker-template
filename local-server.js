@@ -58,6 +58,11 @@ app.get('/', (req, res) => {
   }
 });
 
+// Serve the Dockerfile test page
+app.get('/dockerfile', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dockerfile_test.html'));
+});
+
 // Worker module loading is disabled since we've implemented all necessary API endpoints locally
 // This avoids the "Cannot access 'require' before initialization" error
 console.log('Starting basic server with local API implementations...');
@@ -372,7 +377,7 @@ app.post('/api/regex-gen', (req, res) => {
     'ipv4': '^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$',
     'url': 'https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)',
     'date': '^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$',
-    'password': '^[a-zA-Z0-9!@#$%^&*()_+\\-=\\[\\]{};\':,.<>/?]{8,}$',
+    'password': '^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-=\\[\\]{};\':,.<>/?])[A-Za-z\\d!@#$%^&*()_+\\-=\\[\\]{};\':,.<>/?]{8,}$',
     'hex_color': '^#?([a-fA-F0-9]{6}|[a-fA-F0-9]{3})$',
     'chinese': '\\p{Han}+',
     'html_tag': '</?[a-z][a-z0-9]*[^<>]*>'
@@ -389,6 +394,7 @@ app.post('/api/regex-gen', (req, res) => {
 app.post('/api/regex', (req, res) => {
   const pattern = req.body.pattern || '';
   const text = req.body.text || '';
+  const replace = req.body.replace;
 
   if (!pattern) {
     res.json({ matches: [], count: 0, error: '请输入正则表达式模式' });
@@ -416,7 +422,13 @@ app.post('/api/regex', (req, res) => {
       }
     }
 
-    res.json({ matches: matches, count: matches.length, error: null });
+    const response = { matches: matches, count: matches.length, error: null };
+
+    if (replace !== undefined) {
+      response.replaced = text.replace(regex, replace);
+    }
+
+    res.json(response);
   } catch (error) {
     res.json({ matches: [], count: 0, error: '正则表达式语法错误' });
   }
@@ -703,6 +715,59 @@ app.post('/api/fake-user', (req, res) => {
   }
 
   res.json({ users });
+});
+
+app.post('/api/credit-card', (req, res) => {
+  const count = Math.max(1, Math.min(50, req.body.count || 5));
+  const issuer = req.body.issuer || 'visa';
+  const cards = [];
+
+  for (let i = 0; i < count; i++) {
+    let len = 16;
+    let prefix = [4];
+
+    if (issuer === 'mastercard') {
+      len = 16;
+      prefix = [5, 1 + Math.floor(Math.random() * 5)];
+    } else if (issuer === 'amex') {
+      len = 15;
+      prefix = [3, Math.random() < 0.5 ? 4 : 7];
+    } else if (issuer === 'discover') {
+      len = 16;
+      prefix = [6, 0, 1, 1];
+    }
+
+    const digits = [...prefix];
+    while (digits.length < len - 1) {
+      digits.push(Math.floor(Math.random() * 10));
+    }
+
+    // Luhn
+    let sum = 0;
+    for (let j = digits.length - 1; j >= 0; j--) {
+      let val = digits[j];
+      if ((digits.length - 1 - j) % 2 === 0) {
+        val *= 2;
+        if (val > 9) val -= 9;
+      }
+      sum += val;
+    }
+    const checkDigit = (10 - (sum % 10)) % 10;
+    digits.push(checkDigit);
+
+    const number = digits.join('');
+    const month = String(Math.floor(Math.random() * 12) + 1).padStart(2, '0');
+    const year = Math.floor(Math.random() * 5) + 25;
+    const cvv = Array(issuer === 'amex' ? 4 : 3).fill(0).map(() => Math.floor(Math.random() * 10)).join('');
+
+    cards.push({
+      number,
+      issuer,
+      expiry: `${month}/${year}`,
+      cvv
+    });
+  }
+  res.json({ cards });
 });
 
 app.post('/api/whoami', (req, res) => {
@@ -1156,59 +1221,114 @@ app.post('/chmod', (req, res) => {
 });
 
 app.post('/api/dockerfile', (req, res) => {
-  const { image, workdir, copy, run, env, expose, cmd } = req.body;
+  let stages = req.body.stages;
+
+  // Backward compatibility: if no stages array, use root properties as a single stage
+  if (!stages || !Array.isArray(stages)) {
+    stages = [req.body];
+  }
+
   let df = '';
 
-  // FROM
-  if (image && image.trim()) {
-    df += `FROM ${image.trim()}\n`;
-  } else {
-    df += 'FROM scratch\n';
-  }
+  stages.forEach((stage, index) => {
+    // Add separation between stages
+    if (index > 0) {
+      df += '\n# Stage ' + (index + 1) + '\n';
+    }
 
-  // WORKDIR
-  if (workdir && workdir.trim()) {
-    df += `WORKDIR ${workdir.trim()}\n`;
-  }
+    const { image, as, workdir, copy, run, env, expose, cmd, entrypoint, user, volume, arg, label, healthcheck } = stage;
 
-  // ENV
-  if (env) {
-    env.split('\n').forEach(line => {
-      if (line.trim()) df += `ENV ${line.trim()}\n`;
-    });
-  }
+    // FROM
+    if (image && image.trim()) {
+      df += `FROM ${image.trim()}`;
+      if (as && as.trim()) {
+        df += ` AS ${as.trim()}`;
+      }
+      df += '\n';
+    } else {
+      df += 'FROM scratch\n';
+    }
 
-  // COPY
-  if (copy) {
-    copy.split('\n').forEach(line => {
-      if (line.trim()) df += `COPY ${line.trim()}\n`;
-    });
-  }
+    // ARG
+    if (arg && typeof arg === 'string') {
+      arg.split('\n').forEach(line => {
+        if (line.trim()) df += `ARG ${line.trim()}\n`;
+      });
+    }
 
-  // RUN
-  if (run) {
-    run.split('\n').forEach(line => {
-      if (line.trim()) df += `RUN ${line.trim()}\n`;
-    });
-  }
+    // LABEL
+    if (label && typeof label === 'string') {
+      label.split('\n').forEach(line => {
+        if (line.trim()) df += `LABEL ${line.trim()}\n`;
+      });
+    }
 
-  // EXPOSE
-  if (expose && expose.trim()) {
-    expose.split(/[, ]+/).forEach(port => {
-      if (port.trim()) df += `EXPOSE ${port.trim()}\n`;
-    });
-  }
+    // WORKDIR
+    if (workdir && workdir.trim()) {
+      df += `WORKDIR ${workdir.trim()}\n`;
+    }
 
-  // CMD
-  if (cmd && cmd.trim()) {
-    df += `CMD ${cmd.trim()}\n`;
-  }
+    // ENV
+    if (env && typeof env === 'string') {
+      env.split('\n').forEach(line => {
+        if (line.trim()) df += `ENV ${line.trim()}\n`;
+      });
+    }
+
+    // COPY
+    if (copy && typeof copy === 'string') {
+      copy.split('\n').forEach(line => {
+        if (line.trim()) df += `COPY ${line.trim()}\n`;
+      });
+    }
+
+    // RUN
+    if (run && typeof run === 'string') {
+      run.split('\n').forEach(line => {
+        if (line.trim()) df += `RUN ${line.trim()}\n`;
+      });
+    }
+
+    // EXPOSE
+    if (expose && typeof expose === 'string' && expose.trim()) {
+      expose.split(/[, ]+/).forEach(port => {
+        if (port.trim()) df += `EXPOSE ${port.trim()}\n`;
+      });
+    }
+
+    // USER
+    if (user && user.trim()) {
+      df += `USER ${user.trim()}\n`;
+    }
+
+    // VOLUME
+    if (volume && typeof volume === 'string' && volume.trim()) {
+      volume.split(/[, ]+/).forEach(v => {
+        if (v.trim()) df += `VOLUME ${v.trim()}\n`;
+      });
+    }
+
+    // HEALTHCHECK
+    if (healthcheck && typeof healthcheck === 'string' && healthcheck.trim()) {
+      df += `HEALTHCHECK ${healthcheck.trim()}\n`;
+    }
+
+    // ENTRYPOINT
+    if (entrypoint && typeof entrypoint === 'string' && entrypoint.trim()) {
+      df += `ENTRYPOINT ${entrypoint.trim()}\n`;
+    }
+
+    // CMD
+    if (cmd && typeof cmd === 'string' && cmd.trim()) {
+      df += `CMD ${cmd.trim()}\n`;
+    }
+  });
 
   res.json({ result: df });
 });
 
 app.post('/api/nginx', (req, res) => {
-  const { domain, port, root, path, proxy, upstream, https, force_https, ssl_cert, ssl_key, spa, gzip, client_max_body_size, keepalive_timeout, proxy_connect_timeout, proxy_read_timeout, proxy_send_timeout } = req.body;
+  const { domain, port, root, path, proxy, upstream, https, force_https, ssl_cert, ssl_key, spa, gzip, client_max_body_size, keepalive_timeout, proxy_connect_timeout, proxy_read_timeout, proxy_send_timeout, websocket } = req.body;
   let conf = '';
   const d = (domain && domain.trim()) ? domain.trim() : 'example.com';
   const loc = (path && path.trim()) ? path.trim() : '/';
@@ -1278,6 +1398,11 @@ app.post('/api/nginx', (req, res) => {
     conf += '        proxy_set_header X-Real-IP $remote_addr;\n';
     conf += '        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n';
     conf += '        proxy_set_header X-Forwarded-Proto $scheme;\n';
+    if (websocket) {
+      conf += '        proxy_http_version 1.1;\n';
+      conf += '        proxy_set_header Upgrade $http_upgrade;\n';
+      conf += '        proxy_set_header Connection "upgrade";\n';
+    }
     if (proxy_connect_timeout && proxy_connect_timeout.trim()) conf += `        proxy_connect_timeout ${proxy_connect_timeout.trim()};\n`;
     if (proxy_read_timeout && proxy_read_timeout.trim()) conf += `        proxy_read_timeout ${proxy_read_timeout.trim()};\n`;
     if (proxy_send_timeout && proxy_send_timeout.trim()) conf += `        proxy_send_timeout ${proxy_send_timeout.trim()};\n`;
@@ -1289,6 +1414,11 @@ app.post('/api/nginx', (req, res) => {
     conf += '        proxy_set_header X-Real-IP $remote_addr;\n';
     conf += '        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n';
     conf += '        proxy_set_header X-Forwarded-Proto $scheme;\n';
+    if (websocket) {
+      conf += '        proxy_http_version 1.1;\n';
+      conf += '        proxy_set_header Upgrade $http_upgrade;\n';
+      conf += '        proxy_set_header Connection "upgrade";\n';
+    }
     if (proxy_connect_timeout && proxy_connect_timeout.trim()) conf += `        proxy_connect_timeout ${proxy_connect_timeout.trim()};\n`;
     if (proxy_read_timeout && proxy_read_timeout.trim()) conf += `        proxy_read_timeout ${proxy_read_timeout.trim()};\n`;
     if (proxy_send_timeout && proxy_send_timeout.trim()) conf += `        proxy_send_timeout ${proxy_send_timeout.trim()};\n`;
@@ -1311,11 +1441,193 @@ app.post('/api/nginx', (req, res) => {
   res.json({ result: conf });
 });
 
+app.post('/api/curl', (req, res) => {
+  const method = (req.body.method || 'GET').toUpperCase();
+  const url = req.body.url || 'http://localhost:8080';
+  const headers = req.body.headers || {};
+  const body = req.body.body || '';
+
+  let cmd = `curl -X ${method} '${url.replace(/'/g, "'\\''")}'`;
+
+  // Python generation
+  let py = "import requests\n\n";
+  py += `url = "${url}"\n`;
+
+  let hasHeaders = false;
+
+  // Headers
+  if (typeof headers === 'string') {
+    try {
+      const h = JSON.parse(headers);
+      if (Object.keys(h).length > 0) {
+        hasHeaders = true;
+        py += "\nheaders = {\n";
+        Object.keys(h).forEach(key => {
+          cmd += ` \\\n  -H '${key}: ${h[key]}'`;
+          py += `  '${key}': '${h[key]}',\n`;
+        });
+        py += "}\n";
+      }
+    } catch (e) { }
+  } else {
+    if (Object.keys(headers).length > 0) {
+      hasHeaders = true;
+      py += "\nheaders = {\n";
+      Object.keys(headers).forEach(key => {
+        cmd += ` \\\n  -H '${key}: ${headers[key]}'`;
+        py += `  '${key}': '${headers[key]}',\n`;
+      });
+      py += "}\n";
+    }
+  }
+
+  // Body
+  let hasPayload = false;
+  if (['POST', 'PUT', 'PATCH'].includes(method)) {
+    if (body) {
+      hasPayload = true;
+      const pyBody = body.replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
+      py += `\npayload = "${pyBody}"\n`;
+
+      if (typeof body === 'object') {
+        cmd += ` \\\n  -H 'Content-Type: application/json'`;
+        cmd += ` \\\n  -d '${JSON.stringify(body)}'`;
+      } else {
+        cmd += ` \\\n  -d '${body.replace(/'/g, "'\\''")}'`;
+      }
+    }
+  }
+
+  py += `\nresponse = requests.request("${method}", url`;
+  if (hasHeaders) py += ", headers=headers";
+  if (hasPayload) py += ", data=payload";
+  py += ")\n\nprint(response.text)";
+
+  res.json({ command: cmd, python: py });
+});
+
+app.post('/api/unit-convert', (req, res) => {
+  const value = parseFloat(req.body.value) || 0;
+  const type = req.body.type || 'storage'; // storage, time
+  const from = req.body.from || 'B';
+  const to = req.body.to || 'MB';
+
+  let result = 0;
+
+  if (type === 'storage') {
+    const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+    const fromIdx = units.indexOf(from.toUpperCase());
+    const toIdx = units.indexOf(to.toUpperCase());
+
+    if (fromIdx !== -1 && toIdx !== -1) {
+      const bytes = value * Math.pow(1024, fromIdx);
+      result = bytes / Math.pow(1024, toIdx);
+    }
+  } else if (type === 'time') {
+    const units = { 'ms': 1, 's': 1000, 'm': 60000, 'h': 3600000, 'd': 86400000 };
+    const fromVal = units[from.toLowerCase()];
+    const toVal = units[to.toLowerCase()];
+
+    if (fromVal && toVal) {
+      result = (value * fromVal) / toVal;
+    }
+  }
+
+  res.json({ result, value, from, to, type });
+});
+
+app.post('/api/git-cmd', (req, res) => {
+  const action = req.body.action || 'log';
+  let command = 'git help';
+  let description = '';
+
+  switch (action) {
+    case 'undo_commit':
+      command = 'git reset --soft HEAD~1';
+      description = '撤销最近一次提交，但保留文件修改（Soft Reset）';
+      break;
+    case 'undo_changes':
+      command = 'git checkout .';
+      description = '撤销工作区所有修改（危险：会丢失未提交的改动）';
+      break;
+    case 'log_graph':
+      command = 'git log --graph --oneline --decorate --all';
+      description = '以图形化方式查看提交历史';
+      break;
+    case 'tag':
+      const tag = req.body.tag || 'v1.0.0';
+      const msg = req.body.msg || 'Release version';
+      command = `git tag -a ${tag} -m "${msg}" && git push origin ${tag}`;
+      description = '创建并推送带注释的标签';
+      break;
+    case 'branch_delete':
+      const branch = req.body.branch || 'feature/old';
+      command = `git branch -d ${branch} && git push origin --delete ${branch}`;
+      description = '删除本地和远程分支';
+      break;
+    case 'stash':
+      command = 'git stash && git pull && git stash pop';
+      description = '暂存修改，拉取代码，然后恢复修改';
+      break;
+  }
+
+  res.json({ command, description });
+});
+
+app.post('/api/awk', (req, res) => {
+  const { separator, variable, code, file } = req.body;
+  let cmd = 'awk';
+
+  if (separator && separator !== 'space') {
+    cmd += ` -F '${separator.replace(/'/g, "'\\''")}'`;
+  }
+
+  if (variable && variable.trim()) {
+    cmd += ` -v ${variable.trim()}`;
+  }
+
+  cmd += ` '${code && code.trim() ? code.trim() : '{print $0}'}'`;
+
+  if (file && file.trim()) {
+    cmd += ` ${file.trim()}`;
+  }
+
+  res.json({ command: cmd });
+});
+
+app.post('/api/sed', (req, res) => {
+  const { operation, pattern, replacement, flags, inplace, file } = req.body;
+  let cmd = 'sed';
+
+  if (inplace) cmd += ' -i';
+
+  cmd += " '";
+
+  if (operation === 'substitute') {
+    cmd += `s/${(pattern || '').replace(/\//g, '\\/')}/${(replacement || '').replace(/\//g, '\\/')}/${flags || ''}`;
+  } else if (operation === 'delete') {
+    cmd += `${pattern || ''}d`;
+  } else if (operation === 'insert') {
+    cmd += `${pattern || ''}i\\ ${replacement || ''}`;
+  } else if (operation === 'append') {
+    cmd += `${pattern || ''}a\\ ${replacement || ''}`;
+  }
+
+  cmd += "'";
+
+  if (file && file.trim()) {
+    cmd += ` ${file.trim()}`;
+  }
+
+  res.json({ command: cmd });
+});
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`Local server running at http://localhost:${PORT}`);
   console.log('Available endpoints:');
   console.log('- GET /: Homepage');
+  console.log('- GET /dockerfile: Dockerfile Generator UI');
   console.log('- POST /api/sql: SQL formatting');
   console.log('- POST /api/diff: Text diff');
   console.log('- POST /api/cron: Cron validation');
@@ -1324,4 +1636,7 @@ app.listen(PORT, () => {
   console.log('- POST /api/url: URL encoding/decoding');
   console.log('- POST /api/password: Password generation');
   console.log('- POST /api/json: JSON formatting');
+  console.log('- POST /api/curl: Curl command builder');
+  console.log('- POST /api/unit-convert: Unit converter');
+  console.log('- POST /api/git-cmd: Git command helper');
 });

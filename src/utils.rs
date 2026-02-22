@@ -10,7 +10,7 @@ use qrcode::QrCode;
 use rand::seq::SliceRandom;
 use rand::Rng;
 use regex::Regex;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use similar::{ChangeTag, TextDiff};
 use sqlformat::{format, FormatOptions, Indent, QueryParams};
 use std::net::Ipv4Addr;
@@ -242,7 +242,9 @@ pub fn get_common_regex(key: &str) -> &'static str {
             r"https?://(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)"
         }
         "date" => r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$",
-        "password" => r"^[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':,.<>/?]{8,}$",
+        "password" => {
+            r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':,.<>/?])[A-Za-z\d!@#$%^&*()_+\-=\[\]{};':,.<>/?]{8,}$"
+        }
         "hex_color" => r"^#?([a-fA-F0-9]{6}|[a-fA-F0-9]{3})$",
         "chinese" => r"\p{Han}+",
         "html_tag" => r"</?[a-z][a-z0-9]*[^<>]*>",
@@ -736,7 +738,16 @@ pub fn generate_tar(
 pub struct PsResponse {
     pub command: String,
 }
-pub fn generate_ps(format: &str, sort: &str, tree: bool, filter: &str) -> PsResponse {
+pub fn generate_ps(
+    format: &str,
+    sort: &str,
+    tree: bool,
+    filter: &str,
+    wide: bool,
+    threads: bool,
+    user: &str,
+    pid: &str,
+) -> PsResponse {
     let mut cmd = String::from("ps");
 
     match format {
@@ -745,14 +756,36 @@ pub fn generate_ps(format: &str, sort: &str, tree: bool, filter: &str) -> PsResp
             if tree {
                 cmd.push_str(" --forest");
             }
+            if wide {
+                cmd.push_str("ww"); // -efww works on Linux
+            }
+            if threads {
+                cmd.push_str("L"); // -efL
+            }
         }
         _ => {
             // Default to aux
             cmd.push_str(" aux");
+            if wide {
+                cmd.push_str("ww");
+            }
+            if threads {
+                cmd.push('L'); // auxL (BSD style often supports this mixed)
+            }
             if tree {
                 cmd.push('f');
             }
         }
+    }
+
+    if !user.trim().is_empty() {
+        cmd.push_str(" -u ");
+        cmd.push_str(user.trim());
+    }
+
+    if !pid.trim().is_empty() {
+        cmd.push_str(" -p ");
+        cmd.push_str(pid.trim());
     }
 
     if !sort.is_empty() && sort != "none" {
@@ -977,6 +1010,52 @@ pub fn generate_git(
     }
 
     GitResponse { command: c }
+}
+
+// --- 24.5 Git Cheat Sheet ---
+#[derive(Serialize)]
+pub struct GitCmdResponse {
+    pub command: String,
+    pub description: String,
+}
+pub fn generate_git_cmd(action: &str, tag: &str, msg: &str, branch: &str) -> GitCmdResponse {
+    let (cmd, desc) = match action {
+        "undo_commit" => (
+            "git reset --soft HEAD~1".to_string(),
+            "撤销最近一次提交，但保留文件修改（Soft Reset）".to_string(),
+        ),
+        "undo_changes" => (
+            "git checkout .".to_string(),
+            "撤销工作区所有修改（危险：会丢失未提交的改动）".to_string(),
+        ),
+        "log_graph" => (
+            "git log --graph --oneline --decorate --all".to_string(),
+            "以图形化方式查看提交历史".to_string(),
+        ),
+        "tag" => (
+            format!(
+                "git tag -a {} -m \"{}\" && git push origin {}",
+                tag, msg, tag
+            ),
+            "创建并推送带注释的标签".to_string(),
+        ),
+        "branch_delete" => (
+            format!(
+                "git branch -d {} && git push origin --delete {}",
+                branch, branch
+            ),
+            "删除本地和远程分支".to_string(),
+        ),
+        "stash" => (
+            "git stash && git pull && git stash pop".to_string(),
+            "暂存修改，拉取代码，然后恢复修改".to_string(),
+        ),
+        _ => ("git help".to_string(), "".to_string()),
+    };
+    GitCmdResponse {
+        command: cmd,
+        description: desc,
+    }
 }
 
 // --- 25. Strace Command ---
@@ -1359,62 +1438,134 @@ pub fn generate_find(
 }
 
 // --- 32. Dockerfile Generator ---
-pub fn generate_dockerfile(
-    image: &str,
-    workdir: &str,
-    copy: &str,
-    run: &str,
-    env: &str,
-    expose: &str,
-    cmd: &str,
-) -> String {
+#[derive(Deserialize, Serialize)]
+pub struct DockerfileStage {
+    #[serde(default)]
+    pub image: String,
+    #[serde(default, rename = "as")]
+    pub as_: String,
+    #[serde(default)]
+    pub workdir: String,
+    #[serde(default)]
+    pub copy: String,
+    #[serde(default)]
+    pub run: String,
+    #[serde(default)]
+    pub env: String,
+    #[serde(default)]
+    pub expose: String,
+    #[serde(default)]
+    pub cmd: String,
+    #[serde(default)]
+    pub entrypoint: String,
+    #[serde(default)]
+    pub user: String,
+    #[serde(default)]
+    pub volume: String,
+    #[serde(default)]
+    pub arg: String,
+    #[serde(default)]
+    pub label: String,
+    #[serde(default)]
+    pub healthcheck: String,
+}
+
+pub fn generate_dockerfile(stages: &[DockerfileStage]) -> String {
     let mut df = String::new();
 
-    // FROM
-    if !image.trim().is_empty() {
-        df.push_str(&format!("FROM {}\n", image.trim()));
-    } else {
-        df.push_str("FROM scratch\n");
-    }
-
-    // WORKDIR
-    if !workdir.trim().is_empty() {
-        df.push_str(&format!("WORKDIR {}\n", workdir.trim()));
-    }
-
-    // ENV
-    for line in env.lines() {
-        if !line.trim().is_empty() {
-            df.push_str(&format!("ENV {}\n", line.trim()));
+    for (index, stage) in stages.iter().enumerate() {
+        if index > 0 {
+            df.push_str(&format!("\n# Stage {}\n", index + 1));
         }
-    }
 
-    // COPY
-    for line in copy.lines() {
-        if !line.trim().is_empty() {
-            df.push_str(&format!("COPY {}\n", line.trim()));
+        // FROM
+        if !stage.image.trim().is_empty() {
+            df.push_str(&format!("FROM {}", stage.image.trim()));
+            if !stage.as_.trim().is_empty() {
+                df.push_str(&format!(" AS {}", stage.as_.trim()));
+            }
+            df.push('\n');
+        } else {
+            df.push_str("FROM scratch\n");
         }
-    }
 
-    // RUN
-    for line in run.lines() {
-        if !line.trim().is_empty() {
-            df.push_str(&format!("RUN {}\n", line.trim()));
-        }
-    }
-
-    // EXPOSE
-    if !expose.trim().is_empty() {
-        for port in expose.split(&[',', ' '][..]) {
-            if !port.trim().is_empty() {
-                df.push_str(&format!("EXPOSE {}\n", port.trim()));
+        // ARG
+        for line in stage.arg.lines() {
+            if !line.trim().is_empty() {
+                df.push_str(&format!("ARG {}\n", line.trim()));
             }
         }
-    }
 
-    // CMD
-    if !cmd.trim().is_empty() {
-        df.push_str(&format!("CMD {}\n", cmd.trim()));
+        // LABEL
+        for line in stage.label.lines() {
+            if !line.trim().is_empty() {
+                df.push_str(&format!("LABEL {}\n", line.trim()));
+            }
+        }
+
+        // WORKDIR
+        if !stage.workdir.trim().is_empty() {
+            df.push_str(&format!("WORKDIR {}\n", stage.workdir.trim()));
+        }
+
+        // ENV
+        for line in stage.env.lines() {
+            if !line.trim().is_empty() {
+                df.push_str(&format!("ENV {}\n", line.trim()));
+            }
+        }
+
+        // COPY
+        for line in stage.copy.lines() {
+            if !line.trim().is_empty() {
+                df.push_str(&format!("COPY {}\n", line.trim()));
+            }
+        }
+
+        // RUN
+        for line in stage.run.lines() {
+            if !line.trim().is_empty() {
+                df.push_str(&format!("RUN {}\n", line.trim()));
+            }
+        }
+
+        // EXPOSE
+        if !stage.expose.trim().is_empty() {
+            for port in stage.expose.split(&[',', ' '][..]) {
+                if !port.trim().is_empty() {
+                    df.push_str(&format!("EXPOSE {}\n", port.trim()));
+                }
+            }
+        }
+
+        // USER
+        if !stage.user.trim().is_empty() {
+            df.push_str(&format!("USER {}\n", stage.user.trim()));
+        }
+
+        // VOLUME
+        if !stage.volume.trim().is_empty() {
+            for vol in stage.volume.split(&[',', ' '][..]) {
+                if !vol.trim().is_empty() {
+                    df.push_str(&format!("VOLUME {}\n", vol.trim()));
+                }
+            }
+        }
+
+        // HEALTHCHECK
+        if !stage.healthcheck.trim().is_empty() {
+            df.push_str(&format!("HEALTHCHECK {}\n", stage.healthcheck.trim()));
+        }
+
+        // ENTRYPOINT
+        if !stage.entrypoint.trim().is_empty() {
+            df.push_str(&format!("ENTRYPOINT {}\n", stage.entrypoint.trim()));
+        }
+
+        // CMD
+        if !stage.cmd.trim().is_empty() {
+            df.push_str(&format!("CMD {}\n", stage.cmd.trim()));
+        }
     }
 
     df
@@ -1606,6 +1757,132 @@ pub fn generate_nginx_config(
 
     conf.push_str("}\n");
     conf
+}
+
+// --- 37. Unit Converter ---
+#[derive(Serialize)]
+pub struct UnitResponse {
+    pub result: f64,
+    pub value: f64,
+    pub from: String,
+    pub to: String,
+    #[serde(rename = "type")]
+    pub type_: String,
+}
+pub fn convert_unit(value: f64, type_: &str, from: &str, to: &str) -> UnitResponse {
+    let mut result = 0.0;
+
+    if type_ == "storage" {
+        let units = vec!["B", "KB", "MB", "GB", "TB", "PB"];
+        let from_idx = units
+            .iter()
+            .position(|&u| u == from.to_uppercase())
+            .unwrap_or(0) as i32;
+        let to_idx = units
+            .iter()
+            .position(|&u| u == to.to_uppercase())
+            .unwrap_or(2) as i32; // Default MB
+
+        // Convert to Bytes first
+        let bytes = value * 1024f64.powi(from_idx);
+        // Convert to target
+        result = bytes / 1024f64.powi(to_idx);
+    } else if type_ == "time" {
+        // Base unit: ms
+        let get_ms = |u: &str| match u.to_lowercase().as_str() {
+            "s" => 1000.0,
+            "m" => 60000.0,
+            "h" => 3600000.0,
+            "d" => 86400000.0,
+            _ => 1.0, // ms
+        };
+        let from_val = get_ms(from);
+        let to_val = get_ms(to);
+        result = (value * from_val) / to_val;
+    }
+
+    UnitResponse {
+        result,
+        value,
+        from: from.to_string(),
+        to: to.to_string(),
+        type_: type_.to_string(),
+    }
+}
+
+// --- 38. cURL Generator ---
+#[derive(Serialize)]
+pub struct CurlResponse {
+    pub command: String,
+    pub python: String,
+}
+pub fn generate_curl(method: &str, url: &str, headers: &str, body: &str) -> CurlResponse {
+    let method_upper = method.to_uppercase();
+    let url_val = if url.is_empty() {
+        "http://localhost:8080".to_string()
+    } else {
+        url.replace('\'', "'\\''")
+    };
+
+    // cURL Command
+    let mut cmd = format!("curl -X {} '{}'", method_upper, url_val);
+
+    // Python Code
+    let mut py = String::from("import requests\n\n");
+    py.push_str(&format!("url = \"{}\"\n", url_val));
+
+    let mut has_headers = false;
+
+    // Headers (Simple parsing, assuming JSON string or just lines)
+    if let Ok(json) = serde_json::from_str::<serde_json::Value>(headers) {
+        if let Some(obj) = json.as_object() {
+            if !obj.is_empty() {
+                has_headers = true;
+                py.push_str("\nheaders = {\n");
+                for (k, v) in obj {
+                    let val = v.as_str().unwrap_or("");
+                    cmd.push_str(&format!(" \\\n  -H '{}: {}'", k, val));
+                    py.push_str(&format!("  '{}': '{}',\n", k, val));
+                }
+                py.push_str("}\n");
+            }
+        }
+    }
+
+    // Body
+    let mut has_payload = false;
+    if ["POST", "PUT", "PATCH"].contains(&method_upper.as_str()) && !body.is_empty() {
+        // Check if body looks like JSON
+        if body.trim().starts_with('{') || body.trim().starts_with('[') {
+            cmd.push_str(" \\\n  -H 'Content-Type: application/json'");
+        }
+        // Escape single quotes for shell
+        let escaped_body = body.replace('\'', "'\\''");
+        cmd.push_str(&format!(" \\\n  -d '{}'", escaped_body));
+
+        // Python Payload
+        has_payload = true;
+        // Simple escaping for Python string
+        let py_body = body.replace('\\', "\\\\").replace('"', "\\\"");
+        py.push_str(&format!("\npayload = \"{}\"\n", py_body));
+    }
+
+    py.push_str(&format!(
+        "\nresponse = requests.request(\"{}\", url",
+        method_upper
+    ));
+    if has_headers {
+        py.push_str(", headers=headers");
+    }
+    if has_payload {
+        py.push_str(", data=payload");
+    }
+    py.push_str(")\n\nprint(response.text)");
+
+    CurlResponse {
+        command: cmd,
+        python: py,
+    }
 }
 
 // --- 34. Lorem Ipsum ---
@@ -1999,7 +2276,7 @@ pub fn generate_fake_users(count: usize, locale: &str) -> Vec<FakeUser> {
             format!(
                 "1{}{}",
                 rng.gen_range(3..=9),
-                rng.gen_range(100000000..999999999)
+                rng.gen_range(100000000..=999999999)
             )
         } else {
             format!(
@@ -2018,4 +2295,165 @@ pub fn generate_fake_users(count: usize, locale: &str) -> Vec<FakeUser> {
         });
     }
     users
+}
+
+// --- 39. Credit Card Generator ---
+#[derive(Serialize)]
+pub struct CreditCard {
+    pub number: String,
+    pub issuer: String,
+    pub expiry: String,
+    pub cvv: String,
+}
+
+pub fn generate_credit_cards(count: usize, issuer: &str) -> Vec<CreditCard> {
+    let mut rng = rand::thread_rng();
+    let mut cards = Vec::new();
+    let count = count.max(1).min(50);
+
+    for _ in 0..count {
+        let (len, mut prefix) = match issuer {
+            "visa" => (16, vec![4]),
+            "mastercard" => (16, vec![5, 1 + rng.gen_range(0..5)]), // 51-55
+            "amex" => (15, vec![3, if rng.gen_bool(0.5) { 4 } else { 7 }]), // 34, 37
+            "discover" => (16, vec![6, 0, 1, 1]),
+            _ => (16, vec![4]),
+        };
+
+        while prefix.len() < len - 1 {
+            prefix.push(rng.gen_range(0..10));
+        }
+
+        // Luhn algorithm
+        let mut sum = 0;
+        for (i, &d) in prefix.iter().rev().enumerate() {
+            let mut val = d;
+            if i % 2 == 0 {
+                val *= 2;
+                if val > 9 {
+                    val -= 9;
+                }
+            }
+            sum += val;
+        }
+        let check_digit = (10 - (sum % 10)) % 10;
+        prefix.push(check_digit);
+
+        let number = prefix.iter().map(|d| d.to_string()).collect::<String>();
+
+        // Expiry
+        let month = rng.gen_range(1..=12);
+        let year = rng.gen_range(25..30); // 2025-2030
+        let expiry = format!("{:02}/{:02}", month, year);
+
+        // CVV
+        let cvv_len = if issuer == "amex" { 4 } else { 3 };
+        let cvv = (0..cvv_len)
+            .map(|_| rng.gen_range(0..10).to_string())
+            .collect::<String>();
+
+        cards.push(CreditCard {
+            number,
+            issuer: issuer.to_string(),
+            expiry,
+            cvv,
+        });
+    }
+    cards
+}
+
+// --- 40. Awk Command ---
+#[derive(Serialize)]
+pub struct AwkResponse {
+    pub command: String,
+}
+pub fn generate_awk(separator: &str, variable: &str, code: &str, file: &str) -> AwkResponse {
+    let mut cmd = String::from("awk");
+
+    if !separator.is_empty() && separator != "space" {
+        cmd.push_str(" -F '");
+        cmd.push_str(&separator.replace('\'', "'\\''"));
+        cmd.push('\'');
+    }
+
+    if !variable.trim().is_empty() {
+        cmd.push_str(" -v ");
+        cmd.push_str(variable.trim());
+    }
+
+    cmd.push_str(" '");
+    if !code.trim().is_empty() {
+        cmd.push_str(code.trim());
+    } else {
+        cmd.push_str("{print $0}");
+    }
+    cmd.push('\'');
+
+    if !file.trim().is_empty() {
+        cmd.push(' ');
+        cmd.push_str(file.trim());
+    }
+
+    AwkResponse { command: cmd }
+}
+
+// --- 41. Sed Command ---
+#[derive(Serialize)]
+pub struct SedResponse {
+    pub command: String,
+}
+pub fn generate_sed(
+    operation: &str,
+    pattern: &str,
+    replacement: &str,
+    flags: &str,
+    inplace: bool,
+    file: &str,
+) -> SedResponse {
+    let mut cmd = String::from("sed");
+
+    if inplace {
+        cmd.push_str(" -i");
+    }
+
+    cmd.push_str(" '");
+
+    match operation {
+        "substitute" => {
+            cmd.push('s');
+            cmd.push('/');
+            cmd.push_str(&pattern.replace('/', "\\/"));
+            cmd.push('/');
+            cmd.push_str(&replacement.replace('/', "\\/"));
+            cmd.push('/');
+            if !flags.is_empty() {
+                cmd.push_str(flags);
+            }
+        }
+        "delete" => {
+            cmd.push_str(pattern);
+            cmd.push('d');
+        }
+        "insert" => {
+            cmd.push_str(pattern);
+            cmd.push_str("i\\");
+            cmd.push(' ');
+            cmd.push_str(replacement);
+        }
+        "append" => {
+            cmd.push_str(pattern);
+            cmd.push_str("a\\");
+            cmd.push(' ');
+            cmd.push_str(replacement);
+        }
+        _ => {}
+    }
+    cmd.push('\'');
+
+    if !file.trim().is_empty() {
+        cmd.push(' ');
+        cmd.push_str(file.trim());
+    }
+
+    SedResponse { command: cmd }
 }

@@ -341,6 +341,13 @@ pub fn get_homepage() -> &'static str {
                 grid-template-columns: repeat(2, 1fr); 
             }
         }
+
+        /* Dockerfile Stage Styles */
+        .stage { border: 2px solid var(--border); padding: 20px; margin-bottom: 20px; border-radius: 12px; background: white; position: relative; transition: all 0.3s ease; }
+        .stage:hover { border-color: #cbd5e1; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .stage-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--res-bg); }
+        .stage-num { font-weight: 700; color: var(--primary); font-size: 16px; display: flex; align-items: center; gap: 8px; }
+        .stage-num::before { content: ''; display: block; width: 4px; height: 16px; background: var(--primary); border-radius: 2px; }
     </style>
     <svg style="display:none">
         <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></symbol>
@@ -368,6 +375,7 @@ pub fn get_homepage() -> &'static str {
                     <li><a class="link" onclick="nav('regex', this)"><span class="icon">🔍</span>正则测试</a></li>
                     <li><a class="link" onclick="nav('dockerfile', this)"><span class="icon">🐳</span>Dockerfile 生成</a></li>
                     <li><a class="link" onclick="nav('nginx', this)"><span class="icon">🔧</span>Nginx 配置</a></li>
+                    <li><a class="link" onclick="nav('curl', this)"><span class="icon">🔌</span>cURL 生成器</a></li>
                 </ul>
             </div>
             <div class="menu-group">
@@ -386,6 +394,8 @@ pub fn get_homepage() -> &'static str {
                     <li><a class="link" onclick="nav('firewall', this)"><span class="icon">🔥</span>防火墙 (Firewall)</a></li>
                     <li><a class="link" onclick="nav('systemctl', this)"><span class="icon">⚙️</span>服务管理 (Systemctl)</a></li>
                     <li><a class="link" onclick="nav('find', this)"><span class="icon">🔍</span>查找文件 (Find)</a></li>
+                    <li><a class="link" onclick="nav('awk', this)"><span class="icon">🦅</span>文本处理 (Awk)</a></li>
+                    <li><a class="link" onclick="nav('sed', this)"><span class="icon">✂️</span>流编辑 (Sed)</a></li>
                 </ul>
             </div>
             <div class="menu-group">
@@ -393,6 +403,7 @@ pub fn get_homepage() -> &'static str {
                 <ul class="menu-list">
                     <li><a class="link" onclick="nav('fake-user', this)"><span class="icon">👤</span>虚拟身份生成</a></li>
                     <li><a class="link" onclick="nav('lorem', this)"><span class="icon">📝</span>Lorem Ipsum</a></li>
+                    <li><a class="link" onclick="nav('cc', this)"><span class="icon">💳</span>信用卡生成</a></li>
                     <li><a class="link" onclick="nav('case', this)"><span class="icon">Aa</span>变量命名转换</a></li>
                     <li><a class="link" onclick="nav('escape', this)"><span class="icon">🔣</span>文本转义</a></li>
                     <li><a class="link" onclick="nav('json', this)"><span class="icon">📋</span>JSON 工具</a></li>
@@ -401,6 +412,7 @@ pub fn get_homepage() -> &'static str {
                     <li><a class="link" onclick="nav('url-parser', this)"><span class="icon">🧩</span>URL 解析器</a></li>
                     <li><a class="link" onclick="nav('yaml', this)"><span class="icon">⚙️</span>YAML 转 TOML</a></li>
                     <li><a class="link" onclick="nav('toml2yaml', this)"><span class="icon">⚙️</span>TOML 转 YAML</a></li>
+                    <li><a class="link" onclick="nav('unit', this)"><span class="icon">⚖️</span>单位换算</a></li>
                 </ul>
             </div>
             <div class="menu-group">
@@ -471,6 +483,22 @@ pub fn get_homepage() -> &'static str {
                 <button class="btn" onclick="doFakeUser()">🎲 生成数据</button>
             </div>
             <div class="editor-box" style="height:400px"><div class="editor-header"><span>结果 (JSON)</span><button class="icon-btn" onclick="copy('fu-res')"><svg><use href="#i-copy"></use></svg></button></div><textarea id="fu-res" class="editor-content" readonly></textarea></div>
+        </div>
+
+        <div id="cc" class="panel">
+            <h2>信用卡生成 (测试用)</h2>
+            <div class="row">
+                <span>生成数量:</span>
+                <input type="number" id="cc-count" value="5" style="width:80px" min="1" max="50">
+                <select id="cc-issuer" style="width:120px">
+                    <option value="visa">Visa</option>
+                    <option value="mastercard">Mastercard</option>
+                    <option value="amex">Amex</option>
+                    <option value="discover">Discover</option>
+                </select>
+                <button class="btn" onclick="doCc()">🎲 生成</button>
+            </div>
+            <div class="editor-box" style="height:400px"><div class="editor-header"><span>结果 (JSON)</span><button class="icon-btn" onclick="copy('cc-res')"><svg><use href="#i-copy"></use></svg></button></div><textarea id="cc-res" class="editor-content" readonly></textarea></div>
         </div>
 
         <div id="regex" class="panel">
@@ -591,19 +619,27 @@ pub fn get_homepage() -> &'static str {
                     <option value="log">日志 (log)</option>
                     <option value="reset">重置 (reset)</option>
                     <option value="remote">远程仓库 (remote)</option>
+                    <option disabled>--- 速查 (Cheat Sheet) ---</option>
+                    <option value="undo_commit">撤销最近提交 (Undo Commit)</option>
+                    <option value="undo_changes">撤销工作区修改 (Undo Changes)</option>
+                    <option value="log_graph">图形化日志 (Log Graph)</option>
+                    <option value="tag">打标签并推送 (Tag & Push)</option>
+                    <option value="branch_delete">删除分支 (Delete Branch)</option>
+                    <option value="stash">暂存并拉取 (Stash & Pull)</option>
                 </select>
             </div>
 
             <!-- Dynamic Inputs -->
             <div class="grid-4" style="margin-bottom:15px">
                 <div id="g-target-box"><div class="cron-label" id="g-target-lbl">目标文件</div><input id="g-target" oninput="doGit()"></div>
+                <div id="g-tag-box" style="display:none"><div class="cron-label">标签名 (Tag)</div><input id="g-tag" value="v1.0.0" oninput="doGit()"></div>
                 <div id="g-msg-box"><div class="cron-label">提交信息 (Message)</div><input id="g-msg" placeholder="feat: add new feature" oninput="doGit()"></div>
                 <div id="g-remote-box"><div class="cron-label">远程仓库 (Remote)</div><input id="g-remote" value="origin" oninput="doGit()"></div>
                 <div id="g-branch-box"><div class="cron-label">分支 (Branch)</div><input id="g-branch" value="main" oninput="doGit()"></div>
             </div>
 
             <!-- Options Grid -->
-            <div style="margin-bottom:20px; display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:15px; padding:15px; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0;">
+            <div id="git-opts" style="margin-bottom:20px; display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:15px; padding:15px; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0;">
                 <label id="opt-all" style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="go-all" onchange="doGit()" style="width:18px;height:18px;accent-color:var(--primary)"> 全部 (-A/-a)</label>
                 <label id="opt-force" style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="go-force" onchange="doGit()" style="width:18px;height:18px;accent-color:var(--primary)"> 强制 (--force)</label>
                 <label id="opt-rebase" style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="go-rebase" onchange="doGit()" style="width:18px;height:18px;accent-color:var(--primary)"> 变基 (--rebase)</label>
@@ -1012,10 +1048,17 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
                 <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none">
                     <input type="checkbox" id="ps-tree" onchange="doPs()" style="width:20px;height:20px"> 树状图
                 </label>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none">
+                    <input type="checkbox" id="ps-wide" onchange="doPs()" style="width:20px;height:20px"> 完整命令 (ww)
+                </label>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none">
+                    <input type="checkbox" id="ps-threads" onchange="doPs()" style="width:20px;height:20px"> 显示线程 (-L)
+                </label>
             </div>
-            <div style="margin-bottom:20px">
-                <div class="cron-label">过滤进程名 (Grep)</div>
-                <input id="ps-filter" placeholder="例如: nginx" oninput="doPs()">
+            <div class="grid-4" style="margin-bottom:20px">
+                <div style="grid-column: span 2"><div class="cron-label">指定用户 (-u)</div><input id="ps-user" placeholder="root" oninput="doPs()"></div>
+                <div style="grid-column: span 2"><div class="cron-label">指定 PID (-p)</div><input id="ps-pid" placeholder="1234" oninput="doPs()"></div>
+                <div style="grid-column: span 4"><div class="cron-label">过滤进程名 (Grep)</div><input id="ps-filter" placeholder="例如: nginx" oninput="doPs()"></div>
             </div>
             <div class="result-card">
                 <div class="result-label">生成的命令</div>
@@ -1328,6 +1371,83 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
             </div>
         </div>
 
+        <div id="awk" class="panel">
+            <h2>文本处理 (Awk)</h2>
+            <div class="grid-4" style="margin-bottom:15px">
+                <div><div class="cron-label">分隔符 (-F)</div><input id="awk-sep" placeholder="space (默认)" oninput="doAwk()"></div>
+                <div style="grid-column: span 3"><div class="cron-label">变量赋值 (-v)</div><input id="awk-var" placeholder="例如: limit=100" oninput="doAwk()"></div>
+            </div>
+            <div style="margin-bottom:15px">
+                <div class="cron-label">常用代码片段 (Snippets)</div>
+                <select id="awk-snippets" onchange="setAwkSnippet()" style="width:100%; padding:10px; border:2px solid #e5e7eb; border-radius:10px; background:white;">
+                    <option value="">-- 选择常用操作 --</option>
+                    <option value="{print $1, $3}">打印第1和第3列</option>
+                    <option value="{print $NF}">打印最后一列</option>
+                    <option value="{print NR, $0}">打印行号和内容</option>
+                    <option value="/Error/ {print $0}">打印包含 "Error" 的行</option>
+                    <option value="length($0) > 80">打印长度超过80的行</option>
+                    <option value="{sum+=$1} END {print sum}">计算第1列总和</option>
+                    <option value="{sum+=$1} END {print sum/NR}">计算第1列平均值</option>
+                    <option value="NR>=10 && NR<=20">打印第10到20行</option>
+                    <option value="!seen[$0]++">删除重复行 (去重)</option>
+                </select>
+            </div>
+            <div style="margin-bottom:15px">
+                <div class="cron-label">处理代码 (Pattern { Action })</div>
+                <textarea id="awk-code" style="height:100px; font-family:monospace;" placeholder="{print $1, $3}" oninput="doAwk()"></textarea>
+            </div>
+            <div style="margin-bottom:20px">
+                <div class="cron-label">输入文件</div>
+                <input id="awk-file" placeholder="data.txt" oninput="doAwk()">
+            </div>
+            <div class="result-card">
+                <div class="result-label">生成的命令</div>
+                <div id="awk-cmd" class="result-val" style="font-size:16px; display:flex; align-items:center; min-height:36px;">awk '{print $0}'</div>
+                <button class="icon-btn" onclick="copy('awk-cmd')"><svg><use href="#i-copy"></use></svg></button>
+            </div>
+        </div>
+
+        <div id="sed" class="panel">
+            <h2>流编辑 (Sed)</h2>
+            <div style="margin-bottom:15px">
+                <div class="cron-label">常用代码片段 (Snippets)</div>
+                <select id="sed-snippets" onchange="setSedSnippet()" style="width:100%; padding:10px; border:2px solid #e5e7eb; border-radius:10px; background:white;">
+                    <option value="">-- 选择常用操作 --</option>
+                    <option value='{"op":"substitute","pat":"foo","rep":"bar","flags":"g"}'>全局替换 (s/foo/bar/g)</option>
+                    <option value='{"op":"delete","pat":"/^$/","rep":"","flags":""}'>删除空行 (/^$/d)</option>
+                    <option value='{"op":"delete","pat":"1","rep":"","flags":""}'>删除第一行 (1d)</option>
+                    <option value='{"op":"delete","pat":"$","rep":"","flags":""}'>删除最后一行 ($d)</option>
+                    <option value='{"op":"delete","pat":"/Error/","rep":"","flags":""}'>删除包含 Error 的行</option>
+                    <option value='{"op":"insert","pat":"1","rep":"#!/bin/bash","flags":""}'>在第一行插入 (Shebang)</option>
+                    <option value='{"op":"append","pat":"$","rep":"End of file","flags":""}'>在末尾追加文本</option>
+                </select>
+            </div>
+            <div class="row">
+                <select id="sed-op" onchange="doSed()" style="flex:1"><option value="substitute">替换 (s)</option><option value="delete">删除 (d)</option><option value="insert">插入 (i)</option><option value="append">追加 (a)</option></select>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="sed-i" onchange="doSed()" style="width:18px;height:18px;accent-color:var(--primary)"> 原地修改 (-i)</label>
+            </div>
+            <div class="grid-4" style="margin-bottom:15px">
+                <div style="grid-column: span 2"><div class="cron-label">匹配模式 / 行号</div><input id="sed-pat" placeholder="例如: ^Error 或 1,5" oninput="doSed()"></div>
+                <div style="grid-column: span 2"><div class="cron-label">替换内容 / 新增文本</div><input id="sed-rep" placeholder="例如: Success" oninput="doSed()"></div>
+            </div>
+            <div class="grid-4" style="margin-bottom:20px">
+                <div>
+                    <div class="cron-label">标志 (Flags)</div>
+                    <div style="display:flex; gap:15px; height:48px; align-items:center; padding-left:2px;">
+                        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="sed-g" onchange="doSed()" style="width:18px;height:18px;accent-color:var(--primary)"> 全局 (g)</label>
+                        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="sed-p" onchange="doSed()" style="width:18px;height:18px;accent-color:var(--primary)"> 打印 (p)</label>
+                        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="sed-ic" onchange="doSed()" style="width:18px;height:18px;accent-color:var(--primary)"> 忽略大小写 (I)</label>
+                    </div>
+                </div>
+                <div style="grid-column: span 3"><div class="cron-label">输入文件</div><input id="sed-file" placeholder="file.txt" oninput="doSed()"></div>
+            </div>
+            <div class="result-card">
+                <div class="result-label">生成的命令</div>
+                <div id="sed-cmd" class="result-val" style="font-size:16px; display:flex; align-items:center; min-height:36px;">sed 's///'</div>
+                <button class="icon-btn" onclick="copy('sed-cmd')"><svg><use href="#i-copy"></use></svg></button>
+            </div>
+        </div>
+
         <div id="case" class="panel">
             <h2>变量命名转换</h2>
             <div class="row">
@@ -1349,30 +1469,14 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
         </div>
 
         <div id="dockerfile" class="panel">
-            <h2>Dockerfile 生成器</h2>
-            <div class="grid-4">
-                <div style="grid-column: span 2"><div class="cron-label">基础镜像 (FROM)</div><input id="df-image" placeholder="node:18-alpine" value="node:18-alpine"></div>
-                <div style="grid-column: span 2"><div class="cron-label">工作目录 (WORKDIR)</div><input id="df-workdir" placeholder="/app" value="/app"></div>
+            <h2>Dockerfile 生成器 (支持多阶段构建)</h2>
+            <div id="df-stages-container"></div>
+            
+            <div class="row" style="margin-top: 20px; margin-bottom: 20px;">
+                <button class="btn success" onclick="addStage()">+ 添加构建阶段</button>
+                <button class="btn" onclick="doDockerfile()">🔨 生成 Dockerfile</button>
             </div>
-            <div class="grid-4">
-                <div style="grid-column: span 2">
-                    <div class="cron-label">环境变量 (ENV) - 每行一个 KEY=VALUE</div>
-                    <textarea id="df-env" style="height:100px; font-family:monospace; border:2px solid #e5e7eb; border-radius:10px; padding:10px;" placeholder="NODE_ENV=production&#10;PORT=3000"></textarea>
-                </div>
-                <div style="grid-column: span 2">
-                    <div class="cron-label">复制文件 (COPY) - 每行 "源 目标"</div>
-                    <textarea id="df-copy" style="height:100px; font-family:monospace; border:2px solid #e5e7eb; border-radius:10px; padding:10px;" placeholder="package.json .&#10;src ./src"></textarea>
-                </div>
-            </div>
-            <div style="margin-bottom:15px">
-                <div class="cron-label">运行命令 (RUN) - 每行一条</div>
-                <textarea id="df-run" style="height:100px; font-family:monospace; border:2px solid #e5e7eb; border-radius:10px; padding:10px;" placeholder="npm install&#10;npm run build"></textarea>
-            </div>
-            <div class="grid-4">
-                <div style="grid-column: span 2"><div class="cron-label">暴露端口 (EXPOSE) - 逗号分隔</div><input id="df-expose" placeholder="3000, 8080" value="3000"></div>
-                <div style="grid-column: span 2"><div class="cron-label">启动命令 (CMD)</div><input id="df-cmd" placeholder='["npm", "start"]' value='["npm", "start"]'></div>
-            </div>
-            <button class="btn" style="width:100%; margin-bottom:20px" onclick="doDockerfile()">🔨 生成 Dockerfile</button>
+
             <div class="editor-box">
                 <div class="editor-header"><span>生成结果</span><button class="icon-btn" onclick="copy('df-res')"><svg><use href="#i-copy"></use></svg></button></div>
                 <textarea id="df-res" class="editor-content" style="height:300px" readonly></textarea>
@@ -1423,6 +1527,87 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
                 <div class="editor-header"><span>生成结果</span><button class="icon-btn" onclick="copy('ng-res')"><svg><use href="#i-copy"></use></svg></button></div>
                 <textarea id="ng-res" class="editor-content" style="height:300px" readonly></textarea>
             </div>
+        </div>
+
+        <div id="curl" class="panel">
+            <h2>cURL 命令生成器</h2>
+            <div class="row">
+                <select id="curl-method" style="width:100px; font-weight:bold;">
+                    <option value="GET">GET</option>
+                    <option value="POST">POST</option>
+                    <option value="PUT">PUT</option>
+                    <option value="DELETE">DELETE</option>
+                    <option value="PATCH">PATCH</option>
+                </select>
+                <input id="curl-url" placeholder="https://api.example.com/v1/resource" style="flex:1">
+            </div>
+            <div class="grid-4" style="margin-bottom:15px">
+                <div style="grid-column: span 2">
+                    <div class="cron-label">请求头 (Headers) - JSON 格式</div>
+                    <textarea id="curl-headers" style="height:120px; font-family:monospace;" placeholder='{
+  "Authorization": "Bearer token",
+  "Content-Type": "application/json"
+}'></textarea>
+                </div>
+                <div style="grid-column: span 2">
+                    <div class="cron-label">请求体 (Body)</div>
+                    <textarea id="curl-body" style="height:120px; font-family:monospace;" placeholder='{"key": "value"}'></textarea>
+                </div>
+            </div>
+            <button class="btn" style="width:100%; margin-bottom:20px" onclick="doCurl()">🔌 生成命令</button>
+            <div class="editor-box">
+                <div class="editor-header"><span>生成结果 (cURL)</span><button class="icon-btn" onclick="copy('curl-res')"><svg><use href="#i-copy"></use></svg></button></div>
+                <textarea id="curl-res" class="editor-content" style="height:150px" readonly></textarea>
+            </div>
+            <div class="editor-box" style="margin-top:20px">
+                <div class="editor-header"><span>Python Requests</span><button class="icon-btn" onclick="copy('curl-py')"><svg><use href="#i-copy"></use></svg></button></div>
+                <textarea id="curl-py" class="editor-content" style="height:150px" readonly></textarea>
+            </div>
+        </div>
+
+        <div id="unit" class="panel">
+            <h2>单位换算</h2>
+            <div class="row">
+                <div class="cron-label" style="margin-right:10px">类型:</div>
+                <select id="unit-type" onchange="updateUnitUI()" style="flex:1">
+                    <option value="storage">存储容量 (Storage)</option>
+                    <option value="time">时间 (Time)</option>
+                </select>
+            </div>
+            <div class="grid-4" style="align-items: end;">
+                <div><div class="cron-label">数值</div><input type="number" id="unit-val" value="1" oninput="doUnit()"></div>
+                <div><div class="cron-label">从 (From)</div><select id="unit-from" onchange="doUnit()"></select></div>
+                <div style="text-align:center; padding-bottom:10px; font-size:20px;">➔</div>
+                <div><div class="cron-label">到 (To)</div><select id="unit-to" onchange="doUnit()"></select></div>
+            </div>
+            <div class="result-card" style="margin-top:20px">
+                <div class="result-label">换算结果</div>
+                <div id="unit-res" class="result-val" style="font-size:24px; color:var(--primary); font-weight:bold;">-</div>
+                <button class="icon-btn" onclick="copy('unit-res')"><svg><use href="#i-copy"></use></svg></button>
+            </div>
+        </div>
+
+        <div id="git-cheat" class="panel">
+            <h2>Git 常用命令速查</h2>
+            <div class="row">
+                <select id="gc-action" onchange="updateGcUI(); doGitCheat()" style="flex:1; font-weight:bold; color:var(--primary)">
+                    <option value="undo_commit">撤销最近提交 (Undo Commit)</option>
+                    <option value="undo_changes">撤销工作区修改 (Undo Changes)</option>
+                    <option value="log_graph">图形化日志 (Log Graph)</option>
+                    <option value="tag">打标签并推送 (Tag & Push)</option>
+                    <option value="branch_delete">删除分支 (Delete Branch)</option>
+                    <option value="stash">暂存并拉取 (Stash & Pull)</option>
+                </select>
+            </div>
+            <div id="gc-inputs" class="grid-4" style="margin-bottom:15px">
+                <!-- Dynamic inputs -->
+            </div>
+            <div class="result-card">
+                <div class="result-label">Git Command</div>
+                <div id="gc-cmd" class="result-val" style="font-size:16px; display:flex; align-items:center; min-height:36px; color:var(--primary); font-weight:bold;"></div>
+                <button class="icon-btn" onclick="copy('gc-cmd')"><svg><use href="#i-copy"></use></svg></button>
+            </div>
+            <div style="margin-top:10px; font-size:13px; color:#64748b;" id="gc-desc"></div>
         </div>
 
         <div id="disclaimer" class="panel">
@@ -2059,17 +2244,33 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
         function upChmod(c){let u=(document.getElementById('c_ur').checked?4:0)+(document.getElementById('c_uw').checked?2:0)+(document.getElementById('c_ux').checked?1:0),g=(document.getElementById('c_gr').checked?4:0)+(document.getElementById('c_gw').checked?2:0)+(document.getElementById('c_gx').checked?1:0),o=(document.getElementById('c_or').checked?4:0)+(document.getElementById('c_ow').checked?2:0)+(document.getElementById('c_ox').checked?1:0);if(c)document.getElementById('chmod-octal').value=""+u+g+o;else{let v=document.getElementById('chmod-octal').value;if(v.length===3){let n=v.split('').map(Number);if(n.every(x=>x>=0&&x<=7)){u=n[0];g=n[1];o=n[2];document.getElementById('c_ur').checked=u&4;document.getElementById('c_uw').checked=u&2;document.getElementById('c_ux').checked=u&1;document.getElementById('c_gr').checked=g&4;document.getElementById('c_gw').checked=g&2;document.getElementById('c_gx').checked=g&1;document.getElementById('c_or').checked=o&4;document.getElementById('c_ow').checked=o&2;document.getElementById('c_ox').checked=o&1}}}fetchChmod(document.getElementById('chmod-octal').value)}
         async function fetchChmod(o){try{let f=document.getElementById('chmod-file').value;let d=await post('/chmod',{octal:o,file:f});if(d.valid)document.getElementById('chmod-command').innerText=d.command;}catch(e){} }
         async function doTar() { try{let d=await post('/tar',{op:document.getElementById('tar-op').value,comp:document.getElementById('tar-comp').value,verbose:document.getElementById('tar-v').checked,archive:document.getElementById('tar-arch').value,files:document.getElementById('tar-files').value});document.getElementById('tar-cmd').innerText=d.command;}catch(e){} }
-        async function doPs() { try{let d=await post('/ps',{format:document.getElementById('ps-fmt').value,sort:document.getElementById('ps-sort').value,tree:document.getElementById('ps-tree').checked,filter:document.getElementById('ps-filter').value});document.getElementById('ps-cmd').innerText=d.command;}catch(e){} }
+        async function doPs() { 
+            try {
+                let d = await post('/ps', {
+                    format: document.getElementById('ps-fmt').value,
+                    sort: document.getElementById('ps-sort').value,
+                    tree: document.getElementById('ps-tree').checked,
+                    filter: document.getElementById('ps-filter').value,
+                    wide: document.getElementById('ps-wide').checked,
+                    threads: document.getElementById('ps-threads').checked,
+                    user: document.getElementById('ps-user').value,
+                    pid: document.getElementById('ps-pid').value
+                });
+                document.getElementById('ps-cmd').innerText = d.command;
+            } catch(e) {} 
+        }
         async function doTcpdump() { try{let d=await post('/tcpdump',{interface:document.getElementById('td-if').value,protocol:document.getElementById('td-proto').value,host:document.getElementById('td-host').value,port:document.getElementById('td-port').value,verbose:document.getElementById('td-v').checked,ascii:document.getElementById('td-a').checked,hex:document.getElementById('td-x').checked,write_file:document.getElementById('td-w').value,count:document.getElementById('td-c').value});document.getElementById('td-cmd').innerText=d.command;}catch(e){} }
         
         function updateGitUI() {
             const c = document.getElementById('git-cmd').value;
             const show = (id, v) => document.getElementById(id).style.display = v ? '' : 'none';
             const lbl = (t) => document.getElementById('g-target-lbl').innerText = t;
+            const isCheat = ['undo_commit', 'undo_changes', 'log_graph', 'tag', 'branch_delete', 'stash'].includes(c);
             
             // Defaults
-            show('g-target-box', false); show('g-msg-box', false); show('g-remote-box', false); show('g-branch-box', false);
-            ['all','force','rebase','amend','hard','new','tags','oneline','graph'].forEach(k => show('opt-'+k, false));
+            show('g-target-box', false); show('g-tag-box', false); show('g-msg-box', false); show('g-remote-box', false); show('g-branch-box', false);
+            show('git-opts', !isCheat); // Hide options grid for cheat sheet
+            if(!isCheat) ['all','force','rebase','amend','hard','new','tags','oneline','graph'].forEach(k => show('opt-'+k, false));
 
             if(c==='init') { show('g-target-box',true); lbl('目录 (可选)'); }
             if(c==='clone') { show('g-target-box',true); lbl('仓库 URL'); }
@@ -2082,26 +2283,45 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
             if(c==='log') { show('opt-oneline',true); show('opt-graph',true); }
             if(c==='reset') { show('g-target-box',true); lbl('Commit Hash'); show('opt-hard',true); }
             if(c==='remote') { show('g-target-box',true); lbl('仓库 URL'); show('g-remote-box',true); }
+            
+            // Cheat Sheet UI
+            if(c==='tag') { show('g-tag-box',true); show('g-msg-box',true); }
+            if(c==='branch_delete') { show('g-branch-box',true); }
         }
         async function doGit() {
+            const cmd = document.getElementById('git-cmd').value;
+            const cheatActions = ['undo_commit', 'undo_changes', 'log_graph', 'tag', 'branch_delete', 'stash'];
+            
             try {
-                let d = await post('/git', {
-                    cmd: document.getElementById('git-cmd').value,
-                    target: document.getElementById('g-target').value,
-                    msg: document.getElementById('g-msg').value,
-                    remote: document.getElementById('g-remote').value,
-                    branch: document.getElementById('g-branch').value,
-                    opt_force: document.getElementById('go-force').checked,
-                    opt_rebase: document.getElementById('go-rebase').checked,
-                    opt_all: document.getElementById('go-all').checked,
-                    opt_amend: document.getElementById('go-amend').checked,
-                    opt_hard: document.getElementById('go-hard').checked,
-                    opt_new_branch: document.getElementById('go-new').checked,
-                    opt_tags: document.getElementById('go-tags').checked,
-                    opt_oneline: document.getElementById('go-oneline').checked,
-                    opt_graph: document.getElementById('go-graph').checked
-                });
-                document.getElementById('git-cmd-res').innerText = d.command;
+                if (cheatActions.includes(cmd)) {
+                    let d = await post('/git-cmd', {
+                        action: cmd,
+                        tag: document.getElementById('g-tag').value,
+                        msg: document.getElementById('g-msg').value,
+                        branch: document.getElementById('g-branch').value
+                    });
+                    document.getElementById('git-cmd-res').innerText = d.command;
+                    document.getElementById('git-desc').innerText = d.description || '';
+                } else {
+                    let d = await post('/git', {
+                        cmd: cmd,
+                        target: document.getElementById('g-target').value,
+                        msg: document.getElementById('g-msg').value,
+                        remote: document.getElementById('g-remote').value,
+                        branch: document.getElementById('g-branch').value,
+                        opt_force: document.getElementById('go-force').checked,
+                        opt_rebase: document.getElementById('go-rebase').checked,
+                        opt_all: document.getElementById('go-all').checked,
+                        opt_amend: document.getElementById('go-amend').checked,
+                        opt_hard: document.getElementById('go-hard').checked,
+                        opt_new_branch: document.getElementById('go-new').checked,
+                        opt_tags: document.getElementById('go-tags').checked,
+                        opt_oneline: document.getElementById('go-oneline').checked,
+                        opt_graph: document.getElementById('go-graph').checked
+                    });
+                    document.getElementById('git-cmd-res').innerText = d.command;
+                    document.getElementById('git-desc').innerText = '';
+                }
             } catch(e) {}
         }
         async function doStrace() {
@@ -2255,17 +2475,132 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
                 document.getElementById('fd-cmd').innerText = d.command;
             } catch(e) {}
         }
+        function setAwkSnippet() {
+            const v = document.getElementById('awk-snippets').value;
+            if(v) {
+                document.getElementById('awk-code').value = v;
+                doAwk();
+            }
+        }
+        function setSedSnippet() {
+            const v = document.getElementById('sed-snippets').value;
+            if(v) {
+                try {
+                    const obj = JSON.parse(v);
+                    document.getElementById('sed-op').value = obj.op;
+                    document.getElementById('sed-pat').value = obj.pat;
+                    document.getElementById('sed-rep').value = obj.rep;
+                    
+                    const f = obj.flags || "";
+                    document.getElementById('sed-g').checked = f.includes('g');
+                    document.getElementById('sed-p').checked = f.includes('p');
+                    document.getElementById('sed-ic').checked = f.includes('I') || f.includes('i');
+                    
+                    doSed();
+                } catch(e) {}
+            }
+        }
+        async function doAwk() {
+            try {
+                let d = await post('/awk', {
+                    separator: document.getElementById('awk-sep').value,
+                    variable: document.getElementById('awk-var').value,
+                    code: document.getElementById('awk-code').value,
+                    file: document.getElementById('awk-file').value
+                });
+                document.getElementById('awk-cmd').innerText = d.command;
+            } catch(e) {}
+        }
+        async function doSed() {
+            try {
+                let flags = "";
+                if(document.getElementById('sed-g').checked) flags += "g";
+                if(document.getElementById('sed-p').checked) flags += "p";
+                if(document.getElementById('sed-ic').checked) flags += "I";
+
+                let d = await post('/sed', {
+                    operation: document.getElementById('sed-op').value,
+                    pattern: document.getElementById('sed-pat').value,
+                    replacement: document.getElementById('sed-rep').value,
+                    flags: flags,
+                    inplace: document.getElementById('sed-i').checked,
+                    file: document.getElementById('sed-file').value
+                });
+                document.getElementById('sed-cmd').innerText = d.command;
+            } catch(e) {}
+        }
+
+        // Dockerfile Logic
+        let stageCount = 0;
+        function createStageHTML(index) {
+            return `
+                <div class="stage" id="stage-${index}">
+                    <div class="stage-header">
+                        <span class="stage-num">阶段 ${index + 1}</span>
+                        ${index > 0 ? `<button class="btn secondary" style="padding:6px 12px;font-size:12px;background:#ef4444;box-shadow:none;" onclick="removeStage(${index})">移除此阶段</button>` : ''}
+                    </div>
+                    <div class="grid-4">
+                        <div style="grid-column: span 2"><div class="cron-label">基础镜像 (FROM)</div><input name="image" placeholder="node:18-alpine"></div>
+                        <div style="grid-column: span 2"><div class="cron-label">阶段别名 (AS)</div><input name="as" placeholder="builder"></div>
+                    </div>
+                    <div class="grid-4" style="margin-top:15px">
+                        <div style="grid-column: span 2"><div class="cron-label">工作目录 (WORKDIR)</div><input name="workdir" placeholder="/app"></div>
+                        <div style="grid-column: span 2"><div class="cron-label">用户 (USER)</div><input name="user" placeholder="node"></div>
+                    </div>
+                    <div class="grid-4" style="margin-top:15px">
+                        <div style="grid-column: span 2"><div class="cron-label">环境变量 (ENV)</div><textarea name="env" style="height:80px" placeholder="NODE_ENV=production"></textarea></div>
+                        <div style="grid-column: span 2"><div class="cron-label">构建参数 (ARG)</div><textarea name="arg" style="height:80px" placeholder="VERSION=1.0.0"></textarea></div>
+                    </div>
+                    <div class="grid-4" style="margin-top:15px">
+                        <div style="grid-column: span 2"><div class="cron-label">复制文件 (COPY)</div><textarea name="copy" style="height:80px" placeholder="package.json ."></textarea></div>
+                        <div style="grid-column: span 2"><div class="cron-label">运行命令 (RUN)</div><textarea name="run" style="height:80px" placeholder="npm install"></textarea></div>
+                    </div>
+                    <div class="grid-4" style="margin-top:15px">
+                        <div style="grid-column: span 2"><div class="cron-label">暴露端口 (EXPOSE)</div><input name="expose" placeholder="3000"></div>
+                        <div style="grid-column: span 2"><div class="cron-label">挂载点 (VOLUME)</div><input name="volume" placeholder="/data"></div>
+                    </div>
+                    <div class="grid-4" style="margin-top:15px">
+                        <div style="grid-column: span 2"><div class="cron-label">入口点 (ENTRYPOINT)</div><input name="entrypoint" placeholder='["/entrypoint.sh"]'></div>
+                        <div style="grid-column: span 2"><div class="cron-label">启动命令 (CMD)</div><input name="cmd" placeholder='["npm", "start"]'></div>
+                    </div>
+                </div>
+            `;
+        }
+        function addStage() {
+            const container = document.getElementById('df-stages-container');
+            const div = document.createElement('div');
+            div.innerHTML = createStageHTML(stageCount);
+            container.appendChild(div.firstElementChild);
+            stageCount++;
+            updateStageNumbers();
+        }
+        function removeStage(index) {
+            document.getElementById(`stage-${index}`).remove();
+            updateStageNumbers();
+        }
+        function updateStageNumbers() {
+            const stages = document.querySelectorAll('.stage');
+            stages.forEach((stage, idx) => {
+                stage.id = `stage-${idx}`;
+                stage.querySelector('.stage-num').innerText = `阶段 ${idx + 1}`;
+                const removeBtn = stage.querySelector('button');
+                if (removeBtn) removeBtn.setAttribute('onclick', `removeStage(${idx})`);
+            });
+            stageCount = stages.length;
+        }
         async function doDockerfile() {
             try {
-                let d = await post('/dockerfile', {
-                    image: document.getElementById('df-image').value,
-                    workdir: document.getElementById('df-workdir').value,
-                    env: document.getElementById('df-env').value,
-                    copy: document.getElementById('df-copy').value,
-                    run: document.getElementById('df-run').value,
-                    expose: document.getElementById('df-expose').value,
-                    cmd: document.getElementById('df-cmd').value
+                const stages = [];
+                document.querySelectorAll('.stage').forEach(stageDiv => {
+                    const stage = {};
+                    ['image', 'as', 'workdir', 'env', 'copy', 'run', 'expose', 'cmd', 'entrypoint', 'user', 'volume', 'arg'].forEach(field => {
+                        const el = stageDiv.querySelector(`[name="${field}"]`);
+                        if(el) stage[field] = el.value;
+                    });
+                    stages.push(stage);
                 });
+                
+                let d = await post('/dockerfile', { stages });
                 document.getElementById('df-res').value = d.result;
             } catch(e) {}
         }
@@ -2314,6 +2649,15 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
                 document.getElementById('fu-res').value = JSON.stringify(d.users, null, 2);
             } catch(e) {}
         }
+        async function doCc() {
+            try {
+                let d = await post('/credit-card', {
+                    count: parseInt(document.getElementById('cc-count').value) || 5,
+                    issuer: document.getElementById('cc-issuer').value
+                });
+                document.getElementById('cc-res').value = JSON.stringify(d.cards, null, 2);
+            } catch(e) {}
+        }
         async function doWhoami() {
             try {
                 let d = await post('/whoami', {});
@@ -2327,7 +2671,78 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
             } catch(e) {}
         }
 
-        window.onload = () => { fillTime(); upCron(); upChmod(true); doTar(); doPs(); doTcpdump(); updateGitUI(); doGit(); doStrace(); doIostat(); doNice(); doLs(); doFirewall(); updateSysUI(); doSystemctl(); updateFindUI(); doFind(); doWhoami(); doRsync(); };
+        // cURL Logic
+        async function doCurl() {
+            try {
+                let d = await post('/curl', {
+                    method: document.getElementById('curl-method').value,
+                    url: document.getElementById('curl-url').value,
+                    headers: document.getElementById('curl-headers').value,
+                    body: document.getElementById('curl-body').value
+                });
+                document.getElementById('curl-res').value = d.command;
+                document.getElementById('curl-py').value = d.python;
+            } catch(e) {}
+        }
+
+        // Unit Convert Logic
+        const unitOpts = {
+            storage: ['B', 'KB', 'MB', 'GB', 'TB', 'PB'],
+            time: ['ms', 's', 'm', 'h', 'd']
+        };
+        function updateUnitUI() {
+            const type = document.getElementById('unit-type').value;
+            const opts = unitOpts[type];
+            const from = document.getElementById('unit-from');
+            const to = document.getElementById('unit-to');
+            from.innerHTML = ''; to.innerHTML = '';
+            opts.forEach(u => {
+                from.add(new Option(u, u));
+                to.add(new Option(u, u));
+            });
+            // Defaults
+            if(type === 'storage') { from.value = 'MB'; to.value = 'GB'; }
+            if(type === 'time') { from.value = 's'; to.value = 'ms'; }
+            doUnit();
+        }
+        async function doUnit() {
+            try {
+                let d = await post('/unit-convert', {
+                    value: document.getElementById('unit-val').value,
+                    type: document.getElementById('unit-type').value,
+                    from: document.getElementById('unit-from').value,
+                    to: document.getElementById('unit-to').value
+                });
+                document.getElementById('unit-res').innerText = d.result;
+            } catch(e) {}
+        }
+
+        // Git Cheat Sheet Logic
+        function updateGcUI() {
+            const act = document.getElementById('gc-action').value;
+            const box = document.getElementById('gc-inputs');
+            box.innerHTML = '';
+            if(act === 'tag') {
+                box.innerHTML = `<div><div class="cron-label">标签名 (Tag)</div><input id="gc-tag" value="v1.0.0" oninput="doGitCheat()"></div>
+                                 <div><div class="cron-label">注释 (Message)</div><input id="gc-msg" value="Release v1.0.0" oninput="doGitCheat()"></div>`;
+            } else if(act === 'branch_delete') {
+                box.innerHTML = `<div><div class="cron-label">分支名 (Branch)</div><input id="gc-branch" value="feature/old" oninput="doGitCheat()"></div>`;
+            }
+        }
+        async function doGitCheat() {
+            try {
+                let d = await post('/git-cmd', {
+                    action: document.getElementById('gc-action').value,
+                    tag: document.getElementById('gc-tag') ? document.getElementById('gc-tag').value : '',
+                    msg: document.getElementById('gc-msg') ? document.getElementById('gc-msg').value : '',
+                    branch: document.getElementById('gc-branch') ? document.getElementById('gc-branch').value : ''
+                });
+                document.getElementById('gc-cmd').innerText = d.command;
+                document.getElementById('gc-desc').innerText = d.description;
+            } catch(e) {}
+        }
+
+        window.onload = () => { fillTime(); upCron(); upChmod(true); doTar(); doPs(); doTcpdump(); updateGitUI(); doGit(); doStrace(); doIostat(); doNice(); doLs(); doFirewall(); updateSysUI(); doSystemctl(); updateFindUI(); doFind(); doWhoami(); doRsync(); addStage(); updateUnitUI(); updateGcUI(); doGitCheat(); doAwk(); doSed(); };
     </script>
 </body>
 </html>

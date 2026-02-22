@@ -127,6 +127,10 @@ struct PsRequest {
     sort: String,
     tree: bool,
     filter: String,
+    wide: bool,
+    threads: bool,
+    user: String,
+    pid: String,
 }
 #[derive(Deserialize)]
 struct TcpdumpRequest {
@@ -156,6 +160,13 @@ struct GitRequest {
     opt_tags: bool,
     opt_oneline: bool,
     opt_graph: bool,
+}
+#[derive(Deserialize)]
+struct GitCmdRequest {
+    action: String,
+    tag: String,
+    msg: String,
+    branch: String,
 }
 #[derive(Deserialize)]
 struct StraceRequest {
@@ -230,13 +241,7 @@ struct FindRequest {
 }
 #[derive(Deserialize)]
 struct DockerfileRequest {
-    image: String,
-    workdir: String,
-    copy: String,
-    run: String,
-    env: String,
-    expose: String,
-    cmd: String,
+    stages: Vec<utils::DockerfileStage>,
 }
 #[derive(Deserialize)]
 struct NginxRequest {
@@ -283,6 +288,42 @@ struct RsyncRequest {
 struct FakeUserRequest {
     count: usize,
     locale: String,
+}
+#[derive(Deserialize)]
+struct UnitRequest {
+    value: String, // Frontend sends as string
+    #[serde(rename = "type")]
+    type_: String,
+    from: String,
+    to: String,
+}
+#[derive(Deserialize)]
+struct CurlRequest {
+    method: String,
+    url: String,
+    headers: String,
+    body: String,
+}
+#[derive(Deserialize)]
+struct CreditCardRequest {
+    count: usize,
+    issuer: String,
+}
+#[derive(Deserialize)]
+struct AwkRequest {
+    separator: String,
+    variable: String,
+    code: String,
+    file: String,
+}
+#[derive(Deserialize)]
+struct SedRequest {
+    operation: String,
+    pattern: String,
+    replacement: String,
+    flags: String,
+    inplace: bool,
+    file: String,
 }
 
 #[derive(Serialize)]
@@ -333,6 +374,10 @@ struct WhoamiResponse {
 #[derive(Serialize)]
 struct FakeUserResponse {
     users: Vec<utils::FakeUser>,
+}
+#[derive(Serialize)]
+struct CreditCardResponse {
+    cards: Vec<utils::CreditCard>,
 }
 
 #[event(fetch)]
@@ -511,6 +556,10 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
                 &data.sort,
                 data.tree,
                 &data.filter,
+                data.wide,
+                data.threads,
+                &data.user,
+                &data.pid,
             ))
         })
         .post_async("/api/tcpdump", |mut req, _| async move {
@@ -544,6 +593,15 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
                 data.opt_tags,
                 data.opt_oneline,
                 data.opt_graph,
+            ))
+        })
+        .post_async("/api/git-cmd", |mut req, _| async move {
+            let data: GitCmdRequest = req.json().await?;
+            Response::from_json(&utils::generate_git_cmd(
+                &data.action,
+                &data.tag,
+                &data.msg,
+                &data.branch,
             ))
         })
         .post_async("/api/strace", |mut req, _| async move {
@@ -634,15 +692,7 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
         .post_async("/api/dockerfile", |mut req, _| async move {
             let data: DockerfileRequest = req.json().await?;
             Response::from_json(&GenericResponse {
-                result: utils::generate_dockerfile(
-                    &data.image,
-                    &data.workdir,
-                    &data.copy,
-                    &data.run,
-                    &data.env,
-                    &data.expose,
-                    &data.cmd,
-                ),
+                result: utils::generate_dockerfile(&data.stages),
             })
         })
         .post_async("/api/nginx", |mut req, _| async move {
@@ -740,6 +790,46 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
                 user_agent: ua,
                 headers: header_map,
             })
+        })
+        .post_async("/api/unit-convert", |mut req, _| async move {
+            let data: UnitRequest = req.json().await?;
+            let val = data.value.parse::<f64>().unwrap_or(0.0);
+            Response::from_json(&utils::convert_unit(val, &data.type_, &data.from, &data.to))
+        })
+        .post_async("/api/curl", |mut req, _| async move {
+            let data: CurlRequest = req.json().await?;
+            Response::from_json(&utils::generate_curl(
+                &data.method,
+                &data.url,
+                &data.headers,
+                &data.body,
+            ))
+        })
+        .post_async("/api/credit-card", |mut req, _| async move {
+            let data: CreditCardRequest = req.json().await?;
+            Response::from_json(&CreditCardResponse {
+                cards: utils::generate_credit_cards(data.count, &data.issuer),
+            })
+        })
+        .post_async("/api/awk", |mut req, _| async move {
+            let data: AwkRequest = req.json().await?;
+            Response::from_json(&utils::generate_awk(
+                &data.separator,
+                &data.variable,
+                &data.code,
+                &data.file,
+            ))
+        })
+        .post_async("/api/sed", |mut req, _| async move {
+            let data: SedRequest = req.json().await?;
+            Response::from_json(&utils::generate_sed(
+                &data.operation,
+                &data.pattern,
+                &data.replacement,
+                &data.flags,
+                data.inplace,
+                &data.file,
+            ))
         })
         .run(req, env)
         .await

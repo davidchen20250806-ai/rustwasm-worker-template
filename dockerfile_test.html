@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Dockerfile Generator Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 0 20px;
+            background-color: #f4f4f4;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        .stage {
+            border: 1px solid #ddd;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            background: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .stage-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .stage-title {
+            font-weight: bold;
+            font-size: 1.1em;
+            color: #007bff;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .form-group {
+            margin-bottom: 10px;
+        }
+
+        .form-group.full-width {
+            grid-column: span 2;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            font-size: 0.9em;
+            color: #555;
+        }
+
+        input,
+        textarea {
+            width: 100%;
+            padding: 8px 10px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        textarea {
+            height: 80px;
+            font-family: monospace;
+            resize: vertical;
+        }
+
+        button {
+            padding: 10px 15px;
+            cursor: pointer;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        button.remove {
+            background: #ff4d4f;
+            color: white;
+            padding: 5px 12px;
+            font-size: 0.85em;
+        }
+
+        button.remove:hover {
+            background: #ff7875;
+        }
+
+        button.add {
+            background: #28a745;
+            color: white;
+            margin-right: 10px;
+        }
+
+        button.add:hover {
+            background: #3ddc62;
+        }
+
+        button.generate {
+            background: #1890ff;
+            color: white;
+            font-weight: bold;
+        }
+
+        button.generate:hover {
+            background: #40a9ff;
+        }
+
+        .actions {
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+        }
+
+        #result {
+            margin-top: 20px;
+            white-space: pre-wrap;
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Menlo', 'Monaco', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Dockerfile Generator (Multi-stage)</h1>
+    <p>Add multiple stages to create a multi-stage build Dockerfile.</p>
+
+    <div id="stages-container"></div>
+
+    <div class="actions">
+        <button type="button" class="add" onclick="addStage()">+ Add Stage</button>
+        <button type="button" class="generate" onclick="generate()">Generate Dockerfile</button>
+    </div>
+
+    <div id="result" style="display:none;"></div>
+
+    <script>
+        function createStageHTML(index) {
+            return `
+                <div class="stage" id="stage-${index}">
+                    <div class="stage-header">
+                        <span class="stage-title">Stage ${index + 1}</span>
+                        ${index > 0 ? `<button type="button" class="remove" onclick="removeStage(${index})">Remove Stage</button>` : ''}
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Base Image (FROM)</label>
+                            <input type="text" name="image" placeholder="e.g. node:16">
+                        </div>
+                        <div class="form-group">
+                            <label>Stage Alias (AS)</label>
+                            <input type="text" name="as" placeholder="e.g. builder">
+                        </div>
+                        <div class="form-group full-width">
+                            <label>Build Arguments (ARG) - One per line</label>
+                            <textarea name="arg" placeholder="VERSION=latest&#10;DEBUG=true"></textarea>
+                        </div>
+                        <div class="form-group full-width">
+                            <label>Labels (LABEL) - One per line</label>
+                            <textarea name="label" placeholder="maintainer=me@example.com&#10;version=1.0"></textarea>
+                        </div>
+                        <div class="form-group full-width">
+                            <label>Work Directory (WORKDIR)</label>
+                            <input type="text" name="workdir" placeholder="e.g. /app">
+                        </div>
+                        <div class="form-group full-width">
+                            <label>Environment Variables (ENV) - One per line</label>
+                            <textarea name="env" placeholder="NODE_ENV=production&#10;PORT=8080"></textarea>
+                        </div>
+                        <div class="form-group full-width">
+                            <label>Copy Files (COPY) - One per line</label>
+                            <textarea name="copy" placeholder="package*.json .&#10;--from=builder /app/dist /usr/share/nginx/html"></textarea>
+                        </div>
+                        <div class="form-group full-width">
+                            <label>Run Commands (RUN) - One per line</label>
+                            <textarea name="run" placeholder="npm install&#10;npm run build"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Expose Ports (EXPOSE)</label>
+                            <input type="text" name="expose" placeholder="e.g. 80, 443">
+                        </div>
+                        <div class="form-group">
+                            <label>User (USER)</label>
+                            <input type="text" name="user" placeholder="e.g. node">
+                        </div>
+                        <div class="form-group">
+                            <label>Volumes (VOLUME)</label>
+                            <input type="text" name="volume" placeholder="e.g. /data, /var/log">
+                        </div>
+                        <div class="form-group full-width">
+                            <label>Healthcheck (HEALTHCHECK)</label>
+                            <input type="text" name="healthcheck" placeholder="e.g. --interval=30s CMD curl -f http://localhost/ || exit 1">
+                        </div>
+                        <div class="form-group">
+                            <label>Entrypoint (ENTRYPOINT)</label>
+                            <input type="text" name="entrypoint" placeholder='e.g. ["/docker-entrypoint.sh"]'>
+                        </div>
+                        <div class="form-group">
+                            <label>Command (CMD)</label>
+                            <input type="text" name="cmd" placeholder='e.g. ["nginx", "-g", "daemon off;"]'>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        let stageCount = 0;
+
+        function addStage() {
+            const container = document.getElementById('stages-container');
+            const div = document.createElement('div');
+            div.innerHTML = createStageHTML(stageCount);
+            container.appendChild(div.firstElementChild);
+            stageCount++;
+            updateStageNumbers();
+        }
+
+        function removeStage(index) {
+            const stage = document.getElementById(`stage-${index}`);
+            stage.remove();
+            updateStageNumbers();
+        }
+
+        function updateStageNumbers() {
+            const stages = document.querySelectorAll('.stage');
+            stages.forEach((stage, idx) => {
+                stage.id = `stage-${idx}`;
+                stage.querySelector('.stage-title').textContent = `Stage ${idx + 1}`;
+                const removeBtn = stage.querySelector('.remove');
+                if (removeBtn) removeBtn.setAttribute('onclick', `removeStage(${idx})`);
+            });
+            stageCount = stages.length;
+        }
+
+        async function generate() {
+            const stages = [];
+            document.querySelectorAll('.stage').forEach(stageDiv => {
+                const stage = {};
+                ['image', 'as', 'workdir', 'env', 'copy', 'run', 'expose', 'cmd', 'entrypoint', 'user', 'volume', 'arg', 'label', 'healthcheck'].forEach(field => {
+                    stage[field] = stageDiv.querySelector(`[name="${field}"]`).value;
+                });
+                stages.push(stage);
+            });
+
+            const response = await fetch('/api/dockerfile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ stages })
+            });
+            const data = await response.json();
+            const resultDiv = document.getElementById('result');
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = data.result;
+        }
+
+        // Initialize with one stage
+        addStage();
+    </script>
+</body>
+
+</html>
