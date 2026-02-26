@@ -719,7 +719,7 @@ pub fn get_homepage() -> &'static str {
 
         <div id="date" class="panel">
             <h2>时间转换</h2>
-            <div class="row"><input id="ts-in" placeholder="Timestamp..."><button class="btn" style="background:#64748b" onclick="fillTime()">当前</button><button class="btn" onclick="doDate()">转换</button></div>
+            <div class="row"><input id="ts-in" placeholder="Timestamp or YYYY-MM-DD..."><button class="btn" style="background:#64748b" onclick="fillTime()">当前</button><button class="btn" onclick="doDate()">转换</button></div>
             <div class="grid-4">
                 <div class="result-card"><div class="result-label">Unix (s)</div><div class="result-val" id="ts-s"></div><button class="icon-btn" onclick="copy('ts-s')"><svg><use href="#i-copy"></use></svg></button></div>
                 <div class="result-card"><div class="result-label">Unix (ms)</div><div class="result-val" id="ts-ms"></div><button class="icon-btn" onclick="copy('ts-ms')"><svg><use href="#i-copy"></use></svg></button></div>
@@ -1511,12 +1511,14 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
                 </div>
             </div>
             <div class="grid-4" style="margin-bottom:15px">
-                <div style="grid-column: span 2"><div class="cron-label">网站根目录 (Root)</div><input id="ng-root" placeholder="/var/www/html" value="/var/www/html"></div>
-                <div><div class="cron-label">路径 (Location)</div><input id="ng-path" placeholder="/" value="/"></div>
-                <div><div class="cron-label">单点代理 (Proxy Pass)</div><input id="ng-proxy" placeholder="http://localhost:3000"></div>
+                <div style="grid-column: span 4"><div class="cron-label">全局根目录 (Global Root)</div><input id="ng-root" placeholder="/var/www/html" value="/var/www/html"></div>
             </div>
+            
+            <div id="ng-locs-container"></div>
+            <button class="btn success" onclick="addNginxLocation()" style="margin-bottom:15px; width:100%">+ 添加路径规则 (Location)</button>
+
             <div style="margin-bottom:15px">
-                 <div class="cron-label">负载均衡 (Upstream Servers) - 每行一个 IP:Port (将覆盖单点代理)</div>
+                 <div class="cron-label">负载均衡 (Upstream Servers) - 每行一个 IP:Port</div>
                  <textarea id="ng-upstream" style="height:80px; font-family:monospace; border:2px solid #e5e7eb; border-radius:10px; padding:10px;" placeholder="127.0.0.1:3001&#10;127.0.0.1:3002"></textarea>
             </div>
             <div style="margin-bottom:10px; font-weight:bold; font-size:13px; color:#64748b">高级设置 (超时与限制)</div>
@@ -1559,8 +1561,8 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
             </div>
             <div class="grid-4" style="margin-bottom:15px">
                 <div style="grid-column: span 2">
-                    <div class="cron-label">请求头 (Headers) - JSON 格式</div>
-                    <textarea id="curl-headers" style="height:120px; font-family:monospace;" placeholder='{
+                    <div class="cron-label">请求头 (Headers) - JSON 格式 <span id="curl-h-status" style="font-size:12px; margin-left:5px"></span></div>
+                    <textarea id="curl-headers" oninput="validateCurlHeaders()" style="height:120px; font-family:monospace;" placeholder='{
   "Authorization": "Bearer token",
   "Content-Type": "application/json"
 }'></textarea>
@@ -1721,6 +1723,10 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
                 let text = document.getElementById('qr-text').value;
                 if(!text) return toast('请输入内容', 'error');
                 let d = await post('/qrcode', {text: text});
+                if (d.error) {
+                    return toast('生成失败: ' + d.error, 'error');
+                }
+
                 const img = new Image();
                 img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(d.svg)));
                 img.onload = () => {
@@ -1803,6 +1809,10 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
             
             try {
                 let d = await post('/subnet', {ip: ip, cidr: cidrNum});
+                if (!d.valid) {
+                    return toast('计算失败: 无效的 IP 或 CIDR', 'error');
+                }
+
                 document.getElementById('sn-cidr-res').innerText = d.cidr;
                 document.getElementById('sn-mask').innerText = d.mask;
                 document.getElementById('sn-wild').innerText = d.wildcard;
@@ -1992,16 +2002,7 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
         async function doDate() { 
           let v=document.getElementById('ts-in').value;
           if(!v) {
-            toast('请输入时间戳', 'error');
-            document.getElementById('ts-s').innerText='';
-            document.getElementById('ts-ms').innerText='';
-            document.getElementById('ts-iso').innerText='';
-            document.getElementById('ts-utc').innerText='';
-            document.getElementById('ts-loc').innerText='';
-            return;
-          }
-          if(isNaN(v)) {
-            toast('请输入有效的时间戳', 'error');
+            toast('请输入时间戳或日期', 'error');
             document.getElementById('ts-s').innerText='';
             document.getElementById('ts-ms').innerText='';
             document.getElementById('ts-iso').innerText='';
@@ -2010,19 +2011,20 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
             return;
           }
           try {
-            let d=await post('/date',{input:v});
-            document.getElementById('ts-s').innerText=d.unix_sec;
-            document.getElementById('ts-ms').innerText=d.unix_milli;
-            document.getElementById('ts-iso').innerText=d.iso_8601;
-            document.getElementById('ts-utc').innerText=d.human_utc;
-            document.getElementById('ts-loc').innerText=new Date(d.unix_milli).toLocaleString();
+            let d = await post('/date', { input: v });
+            if (d.valid) {
+                document.getElementById('ts-s').innerText = d.unix_sec;
+                document.getElementById('ts-ms').innerText = d.unix_milli;
+                document.getElementById('ts-iso').innerText = d.iso_8601;
+                document.getElementById('ts-utc').innerText = d.human_utc;
+                document.getElementById('ts-loc').innerText = new Date(d.unix_milli).toLocaleString();
+            } else {
+                toast(d.error || '无效的日期', 'error');
+                ['ts-s', 'ts-ms', 'ts-iso', 'ts-utc', 'ts-loc'].forEach(id => document.getElementById(id).innerText = '');
+            }
           } catch(e) {
             toast('时间转换失败', 'error');
-            document.getElementById('ts-s').innerText='';
-            document.getElementById('ts-ms').innerText='';
-            document.getElementById('ts-iso').innerText='';
-            document.getElementById('ts-utc').innerText='';
-            document.getElementById('ts-loc').innerText='';
+            ['ts-s', 'ts-ms', 'ts-iso', 'ts-utc', 'ts-loc'].forEach(id => document.getElementById(id).innerText = '');
           }
         }
         async function doDiff() { 
@@ -2088,14 +2090,34 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
             el.style.display = el.style.display === 'none' ? 'block' : 'none';
         }
         async function doRegBuild() {
+            const start = document.getElementById('rb-start').value;
+            const notStart = document.getElementById('rb-not-start').value;
+            const end = document.getElementById('rb-end').value;
+            const notEnd = document.getElementById('rb-not-end').value;
+            const has = document.getElementById('rb-has').value;
+            const notHas = document.getElementById('rb-not-has').value;
+
+            const conflicts = [];
+            // 互斥条件检测
+            if (start && notStart && start === notStart) conflicts.push('"开头是"与"开头不是"');
+            if (end && notEnd && end === notEnd) conflicts.push('"结尾是"与"结尾不是"');
+            if (has && notHas && has === notHas) conflicts.push('"包含"与"不包含"');
+            // 逻辑蕴含检测 (如果开头是X，则必然包含X，若同时禁止包含X则冲突)
+            if (start && notHas && start === notHas) conflicts.push('"开头是"与"不包含"');
+            if (end && notHas && end === notHas) conflicts.push('"结尾是"与"不包含"');
+
+            if (conflicts.length > 0) {
+                toast('⚠️ 逻辑冲突: ' + conflicts.join('; ') + ' 内容相同', 'error');
+            }
+
             try {
                 let d = await post('/regex-build', {
-                    starts_with: document.getElementById('rb-start').value,
-                    not_starts_with: document.getElementById('rb-not-start').value,
-                    ends_with: document.getElementById('rb-end').value,
-                    not_ends_with: document.getElementById('rb-not-end').value,
-                    contains: document.getElementById('rb-has').value,
-                    not_contains: document.getElementById('rb-not-has').value
+                    starts_with: start,
+                    not_starts_with: notStart,
+                    ends_with: end,
+                    not_ends_with: notEnd,
+                    contains: has,
+                    not_contains: notHas
                 });
                 document.getElementById('reg-p').value = d.pattern;
                 if(document.getElementById('reg-t').value) testRegex();
@@ -2668,14 +2690,59 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
         function toggleSslInputs() {
             document.getElementById('ssl-inputs').style.display = document.getElementById('ng-ssl').checked ? 'grid' : 'none';
         }
+
+        let ngLocCount = 0;
+        function createNgLocHTML(index) {
+            return `
+            <div class="ng-loc" id="ng-loc-${index}" style="padding:15px; border:1px solid #e2e8f0; border-radius:8px; margin-bottom:10px; background:#f8fafc;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                    <span style="font-weight:bold; color:#0ea5e9;">路径规则 ${index+1}</span>
+                    ${index > 0 ? `<button class="btn secondary" style="padding:4px 8px;font-size:12px;background:#ef4444;box-shadow:none;" onclick="removeNgLoc(${index})">移除</button>` : ''}
+                </div>
+                <div class="grid-4">
+                    <div><div class="cron-label">路径 (Path)</div><input name="path" value="/" placeholder="/"></div>
+                    <div style="grid-column: span 2"><div class="cron-label">代理地址 (Proxy) 或 留空用静态</div><input name="proxy" placeholder="http://localhost:3000"></div>
+                    <div>
+                        <div class="cron-label">选项</div>
+                        <div style="margin-top:10px">
+                            <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" name="spa" style="width:18px;height:18px;accent-color:var(--primary)"> SPA 模式</label>
+                        </div>
+                    </div>
+                </div>
+                <div style="margin-top:10px">
+                    <div class="cron-label">根目录重写 (Root Override, 可选)</div><input name="root" placeholder="留空则继承全局设置">
+                </div>
+            </div>
+            `;
+        }
+        function addNginxLocation() {
+            const container = document.getElementById('ng-locs-container');
+            const div = document.createElement('div');
+            div.innerHTML = createNgLocHTML(ngLocCount);
+            container.appendChild(div.firstElementChild);
+            ngLocCount++;
+        }
+        function removeNgLoc(index) {
+            document.getElementById(`ng-loc-${index}`).remove();
+        }
+
         async function doNginx() {
             try {
+                const locations = [];
+                document.querySelectorAll('.ng-loc').forEach(locDiv => {
+                    locations.push({
+                        path: locDiv.querySelector('[name="path"]').value,
+                        proxy: locDiv.querySelector('[name="proxy"]').value,
+                        root: locDiv.querySelector('[name="root"]').value,
+                        spa: locDiv.querySelector('[name="spa"]').checked
+                    });
+                });
+
                 let d = await post('/nginx', {
                     domain: document.getElementById('ng-domain').value,
                     port: parseInt(document.getElementById('ng-port').value) || 80,
                     root: document.getElementById('ng-root').value,
-                    path: document.getElementById('ng-path').value,
-                    proxy: document.getElementById('ng-proxy').value,
+                    locations: locations,
                     upstream: document.getElementById('ng-upstream').value,
                     https: document.getElementById('ng-ssl').checked,
                     force_https: document.getElementById('ng-force').checked,
@@ -2686,8 +2753,7 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
                     keepalive_timeout: document.getElementById('ng-ka').value,
                     proxy_connect_timeout: document.getElementById('ng-pct').value,
                     proxy_read_timeout: document.getElementById('ng-prt').value,
-                    proxy_send_timeout: document.getElementById('ng-pst').value,
-                    spa: document.getElementById('ng-spa').checked
+                    proxy_send_timeout: document.getElementById('ng-pst').value
                 });
                 document.getElementById('ng-res').value = d.result;
             } catch(e) {}
@@ -2744,6 +2810,28 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
                 document.getElementById('curl-res').value = d.command;
                 document.getElementById('curl-py').value = d.python;
             } catch(e) {}
+        }
+
+        function validateCurlHeaders() {
+            const val = document.getElementById('curl-headers').value;
+            const status = document.getElementById('curl-h-status');
+            const box = document.getElementById('curl-headers');
+            
+            if (!val.trim()) {
+                status.innerText = '';
+                box.style.borderColor = '';
+                return;
+            }
+            try {
+                JSON.parse(val);
+                status.innerText = '✅';
+                status.style.color = '#10b981';
+                box.style.borderColor = '#10b981';
+            } catch (e) {
+                status.innerText = '❌ 格式错误';
+                status.style.color = '#ef4444';
+                box.style.borderColor = '#ef4444';
+            }
         }
 
         // Unit Convert Logic
@@ -2803,7 +2891,7 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
             } catch(e) {}
         }
 
-        window.onload = () => { fillTime(); upCron(); upChmod(true); doTar(); doPs(); doTcpdump(); updateGitUI(); doGit(); doStrace(); doIostat(); doNice(); doLs(); doFirewall(); updateSysUI(); doSystemctl(); updateFindUI(); doFind(); doWhoami(); doRsync(); addStage(); updateUnitUI(); updateGcUI(); doGitCheat(); doAwk(); doSed(); };
+        window.onload = () => { fillTime(); upCron(); upChmod(true); doTar(); doPs(); doTcpdump(); updateGitUI(); doGit(); doStrace(); doIostat(); doNice(); doLs(); doFirewall(); updateSysUI(); doSystemctl(); updateFindUI(); doFind(); doWhoami(); doRsync(); addStage(); addNginxLocation(); updateUnitUI(); updateGcUI(); doGitCheat(); doAwk(); doSed(); };
     </script>
 </body>
 </html>

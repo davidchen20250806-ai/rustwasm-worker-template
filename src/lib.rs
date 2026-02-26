@@ -1,393 +1,13 @@
-use serde::{Deserialize, Serialize};
 use worker::*;
 
+mod converters;
+mod generators;
 mod html;
+mod models;
+mod system;
 mod utils;
 
-#[derive(Deserialize)]
-struct SqlRequest {
-    sql: String,
-}
-#[derive(Deserialize)]
-struct DiffRequest {
-    old: String,
-    new: String,
-}
-#[derive(Deserialize)]
-struct CronRequest {
-    cron: String,
-}
-#[derive(Deserialize)]
-struct SubnetRequest {
-    ip: String,
-    cidr: u8,
-}
-#[derive(Deserialize)]
-struct RegexGenRequest {
-    key: String,
-}
-#[derive(Deserialize)]
-struct RegexRequest {
-    pattern: String,
-    text: String,
-}
-#[derive(Deserialize)]
-struct UuidRequest {
-    count: usize,
-    hyphens: bool,
-    uppercase: bool,
-}
-#[derive(Deserialize)]
-struct JwtRequest {
-    token: String,
-}
-#[derive(Deserialize)]
-struct PasswordRequest {
-    length: usize,
-    uppercase: bool,
-    lowercase: bool,
-    numbers: bool,
-    symbols: bool,
-}
-#[derive(Deserialize)]
-struct TokenRequest {
-    length: usize,
-    uppercase: bool,
-    lowercase: bool,
-    numbers: bool,
-    symbols: bool,
-}
-#[derive(Deserialize)]
-struct Base64Request {
-    text: String,
-    action: String,
-}
-#[derive(Deserialize)]
-struct JsonRequest {
-    input: String,
-}
-#[derive(Deserialize)]
-struct EscapeRequest {
-    text: String,
-    mode: String,
-}
-#[derive(Deserialize)]
-struct DateRequest {
-    input: String,
-}
-#[derive(Deserialize)]
-struct ColorRequest {
-    input: String,
-}
-#[derive(Deserialize)]
-struct QrRequest {
-    text: String,
-}
-#[derive(Deserialize)]
-struct JsEncRequest {
-    js: String,
-}
-#[derive(Deserialize)]
-struct YamlRequest {
-    yaml: String,
-}
-#[derive(Deserialize)]
-struct TomlRequest {
-    toml: String,
-}
-#[derive(Deserialize)]
-struct Md5Request {
-    text: String,
-}
-#[derive(Deserialize)]
-struct ChmodRequest {
-    octal: String,
-    file: String,
-}
-#[derive(Deserialize)]
-struct UrlRequest {
-    input: String,
-}
-#[derive(Deserialize)]
-struct CaseRequest {
-    text: String,
-    mode: String,
-}
-#[derive(Deserialize)]
-struct TarRequest {
-    op: String,
-    comp: String,
-    verbose: bool,
-    archive: String,
-    files: String,
-}
-#[derive(Deserialize)]
-struct PsRequest {
-    format: String,
-    sort: String,
-    tree: bool,
-    filter: String,
-    wide: bool,
-    threads: bool,
-    user: String,
-    pid: String,
-}
-#[derive(Deserialize)]
-struct TcpdumpRequest {
-    interface: String,
-    protocol: String,
-    host: String,
-    port: String,
-    verbose: bool,
-    ascii: bool,
-    hex: bool,
-    write_file: String,
-    count: String,
-}
-#[derive(Deserialize)]
-struct GitRequest {
-    cmd: String,
-    target: String,
-    msg: String,
-    remote: String,
-    branch: String,
-    opt_force: bool,
-    opt_rebase: bool,
-    opt_all: bool,
-    opt_amend: bool,
-    opt_hard: bool,
-    opt_new_branch: bool,
-    opt_tags: bool,
-    opt_oneline: bool,
-    opt_graph: bool,
-}
-#[derive(Deserialize)]
-struct GitCmdRequest {
-    action: String,
-    tag: String,
-    msg: String,
-    branch: String,
-}
-#[derive(Deserialize)]
-struct StraceRequest {
-    target: String,
-    is_pid: bool,
-    follow: bool,
-    summary: bool,
-    output_file: String,
-    filter: String,
-    string_limit: String,
-    timestamp: bool,
-}
-#[derive(Deserialize)]
-struct IostatRequest {
-    interval: String,
-    count: String,
-    human: bool,
-    extended: bool,
-    unit: String,
-    partitions: bool,
-    timestamp: bool,
-    device: String,
-}
-#[derive(Deserialize)]
-struct NiceRequest {
-    mode: String,
-    priority: i32,
-    command: String,
-    target_type: String,
-    target: String,
-}
-#[derive(Deserialize)]
-struct LsRequest {
-    path: String,
-    all: bool,
-    long: bool,
-    human: bool,
-    time: bool,
-    reverse: bool,
-    recursive: bool,
-    inode: bool,
-    directory: bool,
-    color: bool,
-}
-#[derive(Deserialize)]
-struct FirewallRequest {
-    op: String,
-    zone: String,
-    target_type: String,
-    target: String,
-    permanent: bool,
-}
-#[derive(Deserialize)]
-struct SystemctlRequest {
-    operation: String,
-    service: String,
-    user_mode: bool,
-    now: bool,
-    force: bool,
-    global: bool,
-}
-#[derive(Deserialize)]
-struct FindRequest {
-    path: String,
-    name: String,
-    iname: bool,
-    target_type: String,
-    size: String,
-    mtime: String,
-    empty: bool,
-    exec: String,
-}
-#[derive(Deserialize)]
-struct DockerfileRequest {
-    stages: Vec<utils::DockerfileStage>,
-}
-#[derive(Deserialize)]
-struct NginxRequest {
-    domain: String,
-    port: u16,
-    root: String,
-    path: String,
-    proxy: String,
-    upstream: String,
-    https: bool,
-    force_https: bool,
-    ssl_cert: String,
-    ssl_key: String,
-    spa: bool,
-    gzip: bool,
-    client_max_body_size: String,
-    keepalive_timeout: String,
-    proxy_connect_timeout: String,
-    proxy_read_timeout: String,
-    proxy_send_timeout: String,
-}
-#[derive(Deserialize)]
-struct LoremRequest {
-    count: usize,
-    mode: String,
-}
-#[derive(Deserialize)]
-struct RsyncRequest {
-    source: String,
-    user: String,
-    host: String,
-    port: String,
-    remote_path: String,
-    archive: bool,
-    compress: bool,
-    verbose: bool,
-    delete: bool,
-    dry_run: bool,
-    progress: bool,
-    ssh: bool,
-    exclude: String,
-}
-#[derive(Deserialize)]
-struct FakeUserRequest {
-    count: usize,
-    locale: String,
-}
-#[derive(Deserialize)]
-struct UnitRequest {
-    value: String, // Frontend sends as string
-    #[serde(rename = "type")]
-    type_: String,
-    from: String,
-    to: String,
-}
-#[derive(Deserialize)]
-struct CurlRequest {
-    method: String,
-    url: String,
-    headers: String,
-    body: String,
-}
-#[derive(Deserialize)]
-struct CreditCardRequest {
-    count: usize,
-    issuer: String,
-}
-#[derive(Deserialize)]
-struct AwkRequest {
-    separator: String,
-    variable: String,
-    code: String,
-    file: String,
-}
-#[derive(Deserialize)]
-struct SedRequest {
-    operation: String,
-    pattern: String,
-    replacement: String,
-    flags: String,
-    inplace: bool,
-    file: String,
-}
-#[derive(Deserialize)]
-struct RegexBuildRequest {
-    starts_with: String,
-    not_starts_with: String,
-    ends_with: String,
-    not_ends_with: String,
-    contains: String,
-    not_contains: String,
-}
-
-#[derive(Serialize)]
-struct GenericResponse {
-    result: String,
-}
-#[derive(Serialize)]
-struct UuidResponse {
-    uuids: Vec<String>,
-}
-#[derive(Serialize)]
-struct TokenResponse {
-    token: String,
-}
-#[derive(Serialize)]
-struct PasswordResponse {
-    password: String,
-}
-#[derive(Serialize)]
-struct UrlResponse {
-    encoded: String,
-    decoded: String,
-    protocol: String,
-    host: String,
-    path: String,
-    params: Vec<(String, String)>,
-}
-#[derive(Serialize)]
-struct JsonResponse {
-    pretty: String,
-    minified: String,
-    error: Option<String>,
-}
-#[derive(Serialize)]
-struct YamlResponse {
-    result: String,
-    error: Option<String>,
-}
-#[derive(Serialize)]
-struct WhoamiResponse {
-    ip: String,
-    country: String,
-    city: String,
-    asn: String,
-    user_agent: String,
-    headers: std::collections::HashMap<String, String>,
-}
-#[derive(Serialize)]
-struct FakeUserResponse {
-    users: Vec<utils::FakeUser>,
-}
-#[derive(Serialize)]
-struct CreditCardResponse {
-    cards: Vec<utils::CreditCard>,
-}
+use models::*;
 
 #[event(fetch)]
 pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Response> {
@@ -430,7 +50,7 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
         })
         .post_async("/api/uuid", |mut req, _| async move {
             let data: UuidRequest = req.json().await?;
-            let uuids = utils::generate_uuids(utils::UuidConfig {
+            let uuids = utils::generate_uuids(UuidConfig {
                 count: data.count,
                 hyphens: data.hyphens,
                 uppercase: data.uppercase,
@@ -452,7 +72,7 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
         })
         .post_async("/api/js-enc", |mut req, _| async move {
             let data: JsEncRequest = req.json().await?;
-            let res = utils::obfuscate_js(&data.js);
+            let res = converters::obfuscate_js(&data.js);
             Response::from_json(&GenericResponse { result: res })
         })
         .post_async("/api/json", |mut req, _| async move {
@@ -489,17 +109,17 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
         })
         .post_async("/api/qrcode", |mut req, _| async move {
             let data: QrRequest = req.json().await?;
-            let svg = utils::generate_qr(&data.text);
-            // Return raw struct matching frontend expectations { svg: ... }
-            #[derive(Serialize)]
-            struct QrRes {
-                svg: String,
+            match utils::generate_qr(&data.text) {
+                Ok(svg) => Response::from_json(&QrResponse { svg, error: None }),
+                Err(e) => Response::from_json(&QrResponse {
+                    svg: String::new(),
+                    error: Some(e),
+                }),
             }
-            Response::from_json(&QrRes { svg })
         })
         .post_async("/api/chmod", |mut req, _| async move {
             let data: ChmodRequest = req.json().await?;
-            Response::from_json(&utils::calculate_chmod(&data.octal, &data.file))
+            Response::from_json(&system::calculate_chmod(&data.octal, &data.file))
         })
         .post_async("/api/yaml-to-toml", |mut req, _| async move {
             let data: YamlRequest = req.json().await?;
@@ -530,11 +150,7 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
         .post_async("/api/regex-gen", |mut req, _| async move {
             let data: RegexGenRequest = req.json().await?;
             let pat = utils::get_common_regex(&data.key);
-            #[derive(Serialize)]
-            struct PatRes {
-                pattern: String,
-            }
-            Response::from_json(&PatRes {
+            Response::from_json(&RegexPatternResponse {
                 pattern: pat.to_string(),
             })
         })
@@ -545,12 +161,12 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
         })
         .post_async("/api/case", |mut req, _| async move {
             let data: CaseRequest = req.json().await?;
-            let res = utils::convert_case(&data.text, &data.mode);
+            let res = converters::convert_case(&data.text, &data.mode);
             Response::from_json(&GenericResponse { result: res })
         })
         .post_async("/api/tar", |mut req, _| async move {
             let data: TarRequest = req.json().await?;
-            Response::from_json(&utils::generate_tar(
+            Response::from_json(&system::generate_tar(
                 &data.op,
                 &data.comp,
                 data.verbose,
@@ -560,7 +176,7 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
         })
         .post_async("/api/ps", |mut req, _| async move {
             let data: PsRequest = req.json().await?;
-            Response::from_json(&utils::generate_ps(
+            Response::from_json(&system::generate_ps(
                 &data.format,
                 &data.sort,
                 data.tree,
@@ -573,7 +189,7 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
         })
         .post_async("/api/tcpdump", |mut req, _| async move {
             let data: TcpdumpRequest = req.json().await?;
-            Response::from_json(&utils::generate_tcpdump(
+            Response::from_json(&system::generate_tcpdump(
                 &data.interface,
                 &data.protocol,
                 &data.host,
@@ -587,7 +203,7 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
         })
         .post_async("/api/git", |mut req, _| async move {
             let data: GitRequest = req.json().await?;
-            Response::from_json(&utils::generate_git(
+            Response::from_json(&system::generate_git(
                 &data.cmd,
                 &data.target,
                 &data.msg,
@@ -606,7 +222,7 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
         })
         .post_async("/api/git-cmd", |mut req, _| async move {
             let data: GitCmdRequest = req.json().await?;
-            Response::from_json(&utils::generate_git_cmd(
+            Response::from_json(&system::generate_git_cmd(
                 &data.action,
                 &data.tag,
                 &data.msg,
@@ -615,7 +231,7 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
         })
         .post_async("/api/strace", |mut req, _| async move {
             let data: StraceRequest = req.json().await?;
-            Response::from_json(&utils::generate_strace(
+            Response::from_json(&system::generate_strace(
                 &data.target,
                 data.is_pid,
                 data.follow,
@@ -628,7 +244,7 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
         })
         .post_async("/api/iostat", |mut req, _| async move {
             let data: IostatRequest = req.json().await?;
-            Response::from_json(&utils::generate_iostat(
+            Response::from_json(&system::generate_iostat(
                 &data.interval,
                 &data.count,
                 data.human,
@@ -641,7 +257,7 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
         })
         .post_async("/api/nice", |mut req, _| async move {
             let data: NiceRequest = req.json().await?;
-            Response::from_json(&utils::generate_nice(
+            Response::from_json(&system::generate_nice(
                 &data.mode,
                 data.priority,
                 &data.command,
@@ -651,7 +267,7 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
         })
         .post_async("/api/ls", |mut req, _| async move {
             let data: LsRequest = req.json().await?;
-            Response::from_json(&utils::generate_ls(
+            Response::from_json(&system::generate_ls(
                 &data.path,
                 data.all,
                 data.long,
@@ -666,7 +282,7 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
         })
         .post_async("/api/firewall", |mut req, _| async move {
             let data: FirewallRequest = req.json().await?;
-            Response::from_json(&utils::generate_firewall(
+            Response::from_json(&system::generate_firewall(
                 &data.op,
                 &data.zone,
                 &data.target_type,
@@ -676,7 +292,7 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
         })
         .post_async("/api/systemctl", |mut req, _| async move {
             let data: SystemctlRequest = req.json().await?;
-            Response::from_json(&utils::generate_systemctl(
+            Response::from_json(&system::generate_systemctl(
                 &data.operation,
                 &data.service,
                 data.user_mode,
@@ -687,7 +303,7 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
         })
         .post_async("/api/find", |mut req, _| async move {
             let data: FindRequest = req.json().await?;
-            Response::from_json(&utils::generate_find(
+            Response::from_json(&system::generate_find(
                 &data.path,
                 &data.name,
                 data.iname,
@@ -701,7 +317,7 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
         .post_async("/api/dockerfile", |mut req, _| async move {
             let data: DockerfileRequest = req.json().await?;
             Response::from_json(&GenericResponse {
-                result: utils::generate_dockerfile(&data.stages),
+                result: system::generate_dockerfile(&data.stages),
             })
         })
         .post_async("/api/nginx", |mut req, _| async move {
@@ -711,14 +327,12 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
                     &data.domain,
                     data.port,
                     &data.root,
-                    &data.path,
-                    &data.proxy,
+                    &data.locations,
                     &data.upstream,
                     data.https,
                     data.force_https,
                     &data.ssl_cert,
                     &data.ssl_key,
-                    data.spa,
                     data.gzip,
                     &data.client_max_body_size,
                     &data.keepalive_timeout,
@@ -731,12 +345,12 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
         .post_async("/api/lorem", |mut req, _| async move {
             let data: LoremRequest = req.json().await?;
             Response::from_json(&GenericResponse {
-                result: utils::generate_lorem(data.count, &data.mode),
+                result: generators::generate_lorem(data.count, &data.mode),
             })
         })
         .post_async("/api/rsync", |mut req, _| async move {
             let data: RsyncRequest = req.json().await?;
-            Response::from_json(&utils::generate_rsync(
+            Response::from_json(&system::generate_rsync(
                 &data.source,
                 &data.user,
                 &data.host,
@@ -755,7 +369,7 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
         .post_async("/api/fake-user", |mut req, _| async move {
             let data: FakeUserRequest = req.json().await?;
             Response::from_json(&FakeUserResponse {
-                users: utils::generate_fake_users(data.count, &data.locale),
+                users: generators::generate_fake_users(data.count, &data.locale),
             })
         })
         .post_async("/api/whoami", |req, _| async move {
@@ -803,11 +417,16 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
         .post_async("/api/unit-convert", |mut req, _| async move {
             let data: UnitRequest = req.json().await?;
             let val = data.value.parse::<f64>().unwrap_or(0.0);
-            Response::from_json(&utils::convert_unit(val, &data.type_, &data.from, &data.to))
+            Response::from_json(&converters::convert_unit(
+                val,
+                &data.type_,
+                &data.from,
+                &data.to,
+            ))
         })
         .post_async("/api/curl", |mut req, _| async move {
             let data: CurlRequest = req.json().await?;
-            Response::from_json(&utils::generate_curl(
+            Response::from_json(&system::generate_curl(
                 &data.method,
                 &data.url,
                 &data.headers,
@@ -817,12 +436,12 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
         .post_async("/api/credit-card", |mut req, _| async move {
             let data: CreditCardRequest = req.json().await?;
             Response::from_json(&CreditCardResponse {
-                cards: utils::generate_credit_cards(data.count, &data.issuer),
+                cards: generators::generate_credit_cards(data.count, &data.issuer),
             })
         })
         .post_async("/api/awk", |mut req, _| async move {
             let data: AwkRequest = req.json().await?;
-            Response::from_json(&utils::generate_awk(
+            Response::from_json(&system::generate_awk(
                 &data.separator,
                 &data.variable,
                 &data.code,
@@ -831,7 +450,7 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
         })
         .post_async("/api/sed", |mut req, _| async move {
             let data: SedRequest = req.json().await?;
-            Response::from_json(&utils::generate_sed(
+            Response::from_json(&system::generate_sed(
                 &data.operation,
                 &data.pattern,
                 &data.replacement,
@@ -842,7 +461,7 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
         })
         .post_async("/api/regex-build", |mut req, _| async move {
             let data: RegexBuildRequest = req.json().await?;
-            Response::from_json(&utils::generate_custom_regex(
+            Response::from_json(&generators::generate_custom_regex(
                 &data.starts_with,
                 &data.not_starts_with,
                 &data.ends_with,
