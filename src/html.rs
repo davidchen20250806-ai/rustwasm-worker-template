@@ -1761,7 +1761,7 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
             if(!pattern) return toast('请输入正则表达式', 'error');
             
             try {
-                const re = new RegExp(pattern, 'g');
+                const re = new RegExp(pattern, 'gm');
                 const matches = text.match(re);
                 
                 if (matches && matches.length > 0) {
@@ -1780,7 +1780,7 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
         }
 
         async function doSubnet() {
-            const ip = document.getElementById('sn-ip').value;
+            const ip = document.getElementById('sn-ip').value.trim();
             const cidr = document.getElementById('sn-cidr').value;
             
             if(!ip) {

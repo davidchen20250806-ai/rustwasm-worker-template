@@ -393,7 +393,7 @@ app.post('/api/regex-gen', (req, res) => {
 
 app.post('/api/regex-build', (req, res) => {
   const { starts_with, not_starts_with, ends_with, not_ends_with, contains, not_contains } = req.body;
-  
+
   const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   let p = '^';
 
@@ -424,7 +424,7 @@ app.post('/api/regex-build', (req, res) => {
     p += `(?<!${esc(not_ends_with)})`;
   }
   p += '$';
-  
+
   res.json({ pattern: p });
 });
 
@@ -532,8 +532,19 @@ app.post('/api/color', (req, res) => {
 });
 
 app.post('/api/date', (req, res) => {
-  const timestamp = parseInt(req.body.input) || Date.now() / 1000;
-  const date = new Date(timestamp * 1000);
+  const input = req.body.input;
+  let date;
+  // Check if input is numeric (timestamp)
+  if (/^-?\d+$/.test(input)) {
+    const ts = parseInt(input);
+    // If > 100 billion, assume milliseconds, else seconds
+    date = new Date(ts > 100000000000 ? ts : ts * 1000);
+  } else {
+    // Try parsing as date string
+    date = input ? new Date(input) : new Date();
+  }
+
+  const timestamp = date.getTime() / 1000;
   res.json({
     unix_sec: Math.floor(timestamp),
     unix_milli: Math.floor(timestamp * 1000),
@@ -891,8 +902,19 @@ app.post('/color', (req, res) => {
 });
 
 app.post('/date', (req, res) => {
-  const timestamp = parseInt(req.body.input) || Date.now() / 1000;
-  const date = new Date(timestamp * 1000);
+  const input = req.body.input;
+  let date;
+  // Check if input is numeric (timestamp)
+  if (/^-?\d+$/.test(input)) {
+    const ts = parseInt(input);
+    // If > 100 billion, assume milliseconds, else seconds
+    date = new Date(ts > 100000000000 ? ts : ts * 1000);
+  } else {
+    // Try parsing as date string
+    date = input ? new Date(input) : new Date();
+  }
+
+  const timestamp = date.getTime() / 1000;
   res.json({
     unix_sec: Math.floor(timestamp),
     unix_milli: Math.floor(timestamp * 1000),
@@ -1251,7 +1273,7 @@ app.post('/regex', (req, res) => {
 
   try {
     // 创建正则表达式对象
-    const regex = new RegExp(pattern, 'g');
+    const regex = new RegExp(pattern, 'gm');
     const matches = [];
     let match;
 

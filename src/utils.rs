@@ -475,7 +475,7 @@ pub fn parse_jwt(token: &str) -> JwtResponse {
 }
 
 pub fn test_regex(pattern: &str, text: &str) -> RegexResponse {
-    match regex::Regex::new(pattern) {
+    match regex::RegexBuilder::new(pattern).multi_line(true).build() {
         Ok(re) => {
             let matches: Vec<String> = re.find_iter(text).map(|m| m.as_str().to_string()).collect();
             RegexResponse {
