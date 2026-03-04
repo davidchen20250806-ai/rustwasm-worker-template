@@ -1,5 +1,5 @@
-use worker::*;
 use serde::{Deserialize, Serialize};
+use worker::*;
 
 mod converters;
 mod generators;
@@ -476,6 +476,19 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
             let yaml = generate_k8s_yaml(&data);
             Response::from_json(&GenericResponse { result: yaml })
         })
+        .post_async("/api/k8s-cmd", |mut req, _| async move {
+            let data: K8sCmdRequest = req.json().await?;
+            let (cmd, desc) = generate_k8s_cmd(&data);
+            Response::from_json(&K8sCmdResponse {
+                command: cmd,
+                description: desc,
+            })
+        })
+        .post_async("/api/ansible", |mut req, _| async move {
+            let data: AnsibleRequest = req.json().await?;
+            let yaml = generate_ansible_yaml(&data);
+            Response::from_json(&GenericResponse { result: yaml })
+        })
         .run(req, env)
         .await
 }
@@ -518,30 +531,114 @@ struct K8sRequest {
 }
 
 #[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct K8sCmdRequest {
+    action: String,
+    #[serde(default = "default_namespace")]
+    namespace: String,
+    #[serde(default = "default_resource_type")]
+    resource_type: String,
+    #[serde(default)]
+    resource_name: String,
+    #[serde(default)]
+    replicas: i32,
+    #[serde(default)]
+    local_port: i32,
+    #[serde(default)]
+    remote_port: i32,
+    #[serde(default)]
+    output_format: String,
+}
+
+#[derive(Serialize)]
+struct K8sCmdResponse {
+    command: String,
+    description: String,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AnsibleRequest {
+    #[serde(default = "default_play_name")]
+    play_name: String,
+    #[serde(default = "default_hosts")]
+    hosts: String,
+    #[serde(default)]
+    r#become: bool,
+    #[serde(default = "default_true")]
+    gather_facts: bool,
+    #[serde(default)]
+    vars: String,
+    #[serde(default)]
+    tasks: String,
+    #[serde(default)]
+    handlers: String,
+}
+
+#[derive(Deserialize, Serialize)]
 struct K8sEnvVar {
     key: String,
     value: String,
 }
 
-fn default_kind() -> String { "Deployment".to_string() }
-fn default_name() -> String { "app-name".to_string() }
-fn default_namespace() -> String { "default".to_string() }
-fn default_image() -> String { "nginx:latest".to_string() }
-fn default_replicas() -> i32 { 1 }
-fn default_port() -> i32 { 80 }
-fn default_target_port() -> i32 { 80 }
-fn default_service_type() -> String { "ClusterIP".to_string() }
-fn default_ingress_host() -> String { "example.com".to_string() }
-fn default_ingress_path() -> String { "/".to_string() }
-fn default_pull_policy() -> String { "IfNotPresent".to_string() }
-fn default_schedule() -> String { "*/1 * * * *".to_string() }
-fn default_restart_policy() -> String { "Always".to_string() }
+fn default_kind() -> String {
+    "Deployment".to_string()
+}
+fn default_name() -> String {
+    "app-name".to_string()
+}
+fn default_namespace() -> String {
+    "default".to_string()
+}
+fn default_image() -> String {
+    "nginx:latest".to_string()
+}
+fn default_replicas() -> i32 {
+    1
+}
+fn default_port() -> i32 {
+    80
+}
+fn default_target_port() -> i32 {
+    80
+}
+fn default_service_type() -> String {
+    "ClusterIP".to_string()
+}
+fn default_ingress_host() -> String {
+    "example.com".to_string()
+}
+fn default_ingress_path() -> String {
+    "/".to_string()
+}
+fn default_pull_policy() -> String {
+    "IfNotPresent".to_string()
+}
+fn default_schedule() -> String {
+    "*/1 * * * *".to_string()
+}
+fn default_restart_policy() -> String {
+    "Always".to_string()
+}
+fn default_play_name() -> String {
+    "Ansible Playbook".to_string()
+}
+fn default_hosts() -> String {
+    "all".to_string()
+}
+fn default_resource_type() -> String {
+    "pod".to_string()
+}
+fn default_true() -> bool {
+    true
+}
 
 fn generate_k8s_yaml(data: &K8sRequest) -> String {
     let mut yaml = String::new();
-    
+
     if data.kind == "Deployment" {
-        yaml.push_str(&format!(r#"apiVersion: apps/v1
+        yaml.push_str(&format!(
+            r#"apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {}
@@ -564,19 +661,42 @@ spec:
         imagePullPolicy: {}
         ports:
         - containerPort: {}
-"#, data.name, data.namespace, data.name, data.replicas, data.name, data.name, data.name, data.image, data.pull_policy, data.port));
+"#,
+            data.name,
+            data.namespace,
+            data.name,
+            data.replicas,
+            data.name,
+            data.name,
+            data.name,
+            data.image,
+            data.pull_policy,
+            data.port
+        ));
 
-        if data.cpu_limit.is_some() || data.memory_limit.is_some() || data.cpu_request.is_some() || data.memory_request.is_some() {
+        if data.cpu_limit.is_some()
+            || data.memory_limit.is_some()
+            || data.cpu_request.is_some()
+            || data.memory_request.is_some()
+        {
             yaml.push_str("        resources:\n");
             if data.cpu_limit.is_some() || data.memory_limit.is_some() {
                 yaml.push_str("          limits:\n");
-                if let Some(ref cpu) = data.cpu_limit { yaml.push_str(&format!("            cpu: {}\n", cpu)); }
-                if let Some(ref mem) = data.memory_limit { yaml.push_str(&format!("            memory: {}\n", mem)); }
+                if let Some(ref cpu) = data.cpu_limit {
+                    yaml.push_str(&format!("            cpu: {}\n", cpu));
+                }
+                if let Some(ref mem) = data.memory_limit {
+                    yaml.push_str(&format!("            memory: {}\n", mem));
+                }
             }
             if data.cpu_request.is_some() || data.memory_request.is_some() {
                 yaml.push_str("          requests:\n");
-                if let Some(ref cpu) = data.cpu_request { yaml.push_str(&format!("            cpu: {}\n", cpu)); }
-                if let Some(ref mem) = data.memory_request { yaml.push_str(&format!("            memory: {}\n", mem)); }
+                if let Some(ref cpu) = data.cpu_request {
+                    yaml.push_str(&format!("            cpu: {}\n", cpu));
+                }
+                if let Some(ref mem) = data.memory_request {
+                    yaml.push_str(&format!("            memory: {}\n", mem));
+                }
             }
         }
 
@@ -584,15 +704,18 @@ spec:
             yaml.push_str("        env:\n");
             for e in &data.env {
                 if !e.key.is_empty() && !e.value.is_empty() {
-                    yaml.push_str(&format!("        - name: {}\n          value: \"{}\"\n", e.key, e.value));
+                    yaml.push_str(&format!(
+                        "        - name: {}\n          value: \"{}\"\n",
+                        e.key, e.value
+                    ));
                 }
             }
         }
-        
-        yaml.push_str(&format!("      restartPolicy: {}", data.restart_policy));
 
+        yaml.push_str(&format!("      restartPolicy: {}", data.restart_policy));
     } else if data.kind == "Service" {
-        yaml.push_str(&format!(r#"apiVersion: v1
+        yaml.push_str(&format!(
+            r#"apiVersion: v1
 kind: Service
 metadata:
   name: {}
@@ -607,10 +730,18 @@ spec:
   - protocol: TCP
     port: {}
     targetPort: {}
-"#, data.name, data.namespace, data.name, data.service_type, data.name, data.port, data.target_port));
-
+"#,
+            data.name,
+            data.namespace,
+            data.name,
+            data.service_type,
+            data.name,
+            data.port,
+            data.target_port
+        ));
     } else if data.kind == "Ingress" {
-        yaml.push_str(&format!(r#"apiVersion: networking.k8s.io/v1
+        yaml.push_str(&format!(
+            r#"apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: {}
@@ -629,10 +760,12 @@ spec:
             name: {}
             port:
               number: {}
-"#, data.name, data.namespace, data.ingress_host, data.ingress_path, data.name, data.port));
-
+"#,
+            data.name, data.namespace, data.ingress_host, data.ingress_path, data.name, data.port
+        ));
     } else if data.kind == "CronJob" {
-        yaml.push_str(&format!(r#"apiVersion: batch/v1
+        yaml.push_str(&format!(
+            r#"apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: {}
@@ -652,15 +785,20 @@ spec:
             - -c
             - "echo Hello Kubernetes"
           restartPolicy: OnFailure
-"#, data.name, data.namespace, data.schedule, data.name, data.image, data.pull_policy));
+"#,
+            data.name, data.namespace, data.schedule, data.name, data.image, data.pull_policy
+        ));
     } else if data.kind == "ConfigMap" {
-        yaml.push_str(&format!(r#"apiVersion: v1
+        yaml.push_str(&format!(
+            r#"apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {}
   namespace: {}
 data:
-"#, data.name, data.namespace));
+"#,
+            data.name, data.namespace
+        ));
         if !data.env.is_empty() {
             for e in &data.env {
                 if !e.key.is_empty() && !e.value.is_empty() {
@@ -671,7 +809,8 @@ data:
             yaml.push_str("  config.json: |\n    {\n      \"key\": \"value\"\n    }");
         }
     } else if data.kind == "Secret" {
-        yaml.push_str(&format!(r#"apiVersion: v1
+        yaml.push_str(&format!(
+            r#"apiVersion: v1
 kind: Secret
 metadata:
   name: {}
@@ -679,9 +818,11 @@ metadata:
 type: Opaque
 data:
   # Data should be base64 encoded
-"#, data.name, data.namespace));
+"#,
+            data.name, data.namespace
+        ));
         if !data.env.is_empty() {
-            use base64::{Engine as _, engine::general_purpose};
+            use base64::{engine::general_purpose, Engine as _};
             for e in &data.env {
                 if !e.key.is_empty() && !e.value.is_empty() {
                     let b64 = general_purpose::STANDARD.encode(&e.value);
@@ -693,5 +834,135 @@ data:
         }
     }
 
+    yaml
+}
+
+fn generate_k8s_cmd(data: &K8sCmdRequest) -> (String, String) {
+    let ns = if data.namespace.is_empty() {
+        "default"
+    } else {
+        &data.namespace
+    };
+    let name = if data.resource_name.is_empty() {
+        "app"
+    } else {
+        &data.resource_name
+    };
+    let rtype = if data.resource_type.is_empty() {
+        "pod"
+    } else {
+        &data.resource_type
+    };
+
+    let output = if data.output_format.is_empty() {
+        String::new()
+    } else {
+        format!(" -o {}", data.output_format)
+    };
+
+    match data.action.as_str() {
+        "get" => (
+            format!("kubectl get {} -n {}{}", rtype, ns, output),
+            format!("获取 {} 列表", rtype),
+        ),
+        "describe" => (
+            format!("kubectl describe {} {} -n {}", rtype, name, ns),
+            format!("查看 {} {} 的详细信息", rtype, name),
+        ),
+        "delete" => (
+            format!("kubectl delete {} {} -n {}", rtype, name, ns),
+            format!("删除 {} {}", rtype, name),
+        ),
+        "logs" => {
+            let target = if rtype == "pod" {
+                name.to_string()
+            } else {
+                format!("{}/{}", rtype, name)
+            };
+            (
+                format!("kubectl logs -f {} -n {}", target, ns),
+                format!("查看 {} {} 的日志", rtype, name),
+            )
+        }
+        "exec" => (
+            format!("kubectl exec -it {} -n {} -- /bin/sh", name, ns),
+            format!("进入 Pod {} 的 Shell (仅适用于 Pod)", name),
+        ),
+        "scale" => (
+            format!(
+                "kubectl scale {} {} --replicas={} -n {}",
+                rtype, name, data.replicas, ns
+            ),
+            format!("将 {} {} 伸缩到 {} 个副本", rtype, name, data.replicas),
+        ),
+        "port_forward" => (
+            format!(
+                "kubectl port-forward {} {}:{} -n {}",
+                if rtype == "pod" {
+                    name.to_string()
+                } else {
+                    format!("{}/{}", rtype, name)
+                },
+                data.local_port,
+                data.remote_port,
+                ns
+            ),
+            format!(
+                "端口转发 {} {} -> {}",
+                rtype, data.local_port, data.remote_port
+            ),
+        ),
+        "rollout_restart" => (
+            format!("kubectl rollout restart {} {} -n {}", rtype, name, ns),
+            format!("重启 {} {} (滚动更新)", rtype, name),
+        ),
+        "rollout_status" => (
+            format!("kubectl rollout status {} {} -n {}", rtype, name, ns),
+            format!("查看 {} {} 的滚动更新状态", rtype, name),
+        ),
+        "rollout_history" => (
+            format!("kubectl rollout history {} {} -n {}", rtype, name, ns),
+            format!("查看 {} {} 的历史版本", rtype, name),
+        ),
+        "rollout_undo" => (
+            format!("kubectl rollout undo {} {} -n {}", rtype, name, ns),
+            format!("回滚 {} {} 到上一个版本", rtype, name),
+        ),
+        _ => ("kubectl --help".to_string(), "显示帮助信息".to_string()),
+    }
+}
+
+fn generate_ansible_yaml(data: &AnsibleRequest) -> String {
+    let mut yaml = String::new();
+    yaml.push_str(&format!("- name: {}\n", data.play_name));
+    yaml.push_str(&format!("  hosts: {}\n", data.hosts));
+    if data.r#become {
+        yaml.push_str("  become: yes\n");
+    }
+    if !data.gather_facts {
+        yaml.push_str("  gather_facts: no\n");
+    }
+    if !data.vars.trim().is_empty() {
+        yaml.push_str("  vars:\n");
+        for line in data.vars.lines() {
+            yaml.push_str(&format!("    {}\n", line));
+        }
+    }
+    yaml.push_str("  tasks:\n");
+
+    if data.tasks.trim().is_empty() {
+        yaml.push_str("    - name: Ping hosts\n      ping:\n");
+    } else {
+        for line in data.tasks.lines() {
+            yaml.push_str(&format!("    {}\n", line));
+        }
+    }
+
+    if !data.handlers.trim().is_empty() {
+        yaml.push_str("  handlers:\n");
+        for line in data.handlers.lines() {
+            yaml.push_str(&format!("    {}\n", line));
+        }
+    }
     yaml
 }

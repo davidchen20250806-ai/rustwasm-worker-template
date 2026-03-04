@@ -375,6 +375,7 @@ pub fn get_homepage() -> &'static str {
                     <li><a class="link" onclick="nav('regex', this)"><span class="icon">🔍</span>正则表达式生成</a></li>
                     <li><a class="link" onclick="nav('dockerfile', this)"><span class="icon">🐳</span>Dockerfile 生成</a></li>
                     <li><a class="link" onclick="nav('k8s', this)"><span class="icon">☸️</span>K8s YAML 生成</a></li>
+                    <li><a class="link" onclick="nav('ansible', this)"><span class="icon">🅰️</span>Ansible YAML 生成</a></li>
                     <li><a class="link" onclick="nav('nginx', this)"><span class="icon">🔧</span>Nginx 配置</a></li>
                     <li><a class="link" onclick="nav('curl', this)"><span class="icon">🔌</span>cURL 生成器</a></li>
                 </ul>
@@ -382,6 +383,7 @@ pub fn get_homepage() -> &'static str {
             <div class="menu-group">
                 <div class="menu-cat" onclick="toggleGroup(this)"><span>Linux 命令</span><span class="menu-arrow">▼</span></div>
                 <ul class="menu-list">
+                    <li><a class="link" onclick="nav('k8s-cmd', this)"><span class="icon">⚓</span>K8s 常用命令</a></li>
                     <li><a class="link" onclick="nav('ls', this)"><span class="icon">📂</span>列出文件 (Ls)</a></li>
                     <li><a class="link" onclick="nav('rsync', this)"><span class="icon">🔄</span>文件同步 (Rsync)</a></li>
                     <li><a class="link" onclick="nav('git', this)"><span class="icon">🎋</span>Git 命令</a></li>
@@ -1640,6 +1642,127 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
                 <div class="editor-header"><span>生成结果</span><button class="icon-btn" onclick="copy('k8s-res')"><svg><use href="#i-copy"></use></svg></button></div>
                 <textarea id="k8s-res" class="editor-content" style="height:300px" readonly></textarea>
             </div>
+        </div>
+
+        <div id="k8s-cmd" class="panel">
+            <h2>Kubernetes 常用命令</h2>
+            <div class="row">
+                <div style="flex:1">
+                    <div class="cron-label">操作 (Action)</div>
+                    <select id="kc-action" onchange="updateKcUI(); doK8sCmd()" style="width:100%; font-weight:bold; color:var(--primary)">
+                        <option value="get">查看列表 (Get)</option>
+                        <option value="describe">查看详情 (Describe)</option>
+                        <option value="delete">删除资源 (Delete)</option>
+                        <option value="logs">查看日志 (Logs)</option>
+                        <option value="exec">进入容器 (Exec)</option>
+                        <option value="scale">伸缩副本 (Scale)</option>
+                        <option value="port_forward">端口转发 (Port Forward)</option>
+                        <option value="rollout_restart">滚动重启 (Rollout Restart)</option>
+                        <option value="rollout_status">滚动状态 (Rollout Status)</option>
+                        <option value="rollout_history">历史版本 (Rollout History)</option>
+                        <option value="rollout_undo">回滚版本 (Rollout Undo)</option>
+                    </select>
+                </div>
+                <div style="flex:1">
+                    <div class="cron-label">资源类型 (Resource)</div>
+                    <select id="kc-type" onchange="doK8sCmd()" style="width:100%">
+                        <option value="pod">Pod</option>
+                        <option value="deployment">Deployment</option>
+                        <option value="service">Service</option>
+                        <option value="ingress">Ingress</option>
+                        <option value="configmap">ConfigMap</option>
+                        <option value="secret">Secret</option>
+                        <option value="statefulset">StatefulSet</option>
+                        <option value="job">Job</option>
+                        <option value="cronjob">CronJob</option>
+                        <option value="node">Node</option>
+                        <option value="pvc">PVC</option>
+                        <option value="ns">Namespace</option>
+                    </select>
+                </div>
+            </div>
+            <div class="grid-4" style="margin-bottom:15px">
+                <div><div class="cron-label">命名空间 (-n)</div><input id="kc-ns" value="default" oninput="doK8sCmd()"></div>
+                <div><div class="cron-label">输出格式 (-o)</div><select id="kc-out" onchange="doK8sCmd()">
+                    <option value="wide" selected>详细 (wide)</option>
+                    <option value="yaml">YAML</option>
+                    <option value="json">JSON</option>
+                    <option value="name">仅名称 (name)</option>
+                    <option value="">默认 (Default)</option>
+                </select></div>
+                <div style="grid-column: span 2"><div class="cron-label">资源名称 (Name)</div><input id="kc-name" placeholder="my-resource-name" oninput="doK8sCmd()"></div>
+            </div>
+            <div id="kc-extra" class="grid-4" style="margin-bottom:15px; display:none">
+                <!-- Dynamic inputs -->
+            </div>
+            <div class="result-card">
+                <div class="result-label">Kubectl Command</div>
+                <div id="kc-res" class="result-val" style="font-size:16px; display:flex; align-items:center; min-height:36px; color:var(--primary); font-weight:bold;">kubectl get pods</div>
+                <button class="icon-btn" onclick="copy('kc-res')"><svg><use href="#i-copy"></use></svg></button>
+            </div>
+            <div style="margin-top:10px; font-size:13px; color:#64748b;" id="kc-desc"></div>
+        </div>
+
+        <div id="ansible" class="panel">
+            <h2>Ansible YAML 生成</h2>
+            <div class="grid-4" style="margin-bottom:15px">
+                <div style="grid-column: span 2"><div class="cron-label">Playbook 名称</div><input id="ans-name" value="Setup Web Server"></div>
+                <div><div class="cron-label">目标主机 (Hosts)</div><input id="ans-hosts" value="webservers"></div>
+                <div style="display:flex; align-items:flex-end; padding-bottom:15px; gap:15px">
+                    <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="ans-become" checked style="width:18px;height:18px;accent-color:var(--primary)"> 提权 (Become)</label>
+                    <label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="ans-facts" checked style="width:18px;height:18px;accent-color:var(--primary)"> 收集事实 (Facts)</label>
+                </div>
+            </div>
+            <div style="margin-bottom:15px">
+                <div class="cron-label">变量 (Vars) - Key: Value</div>
+                <textarea id="ans-vars" style="height:60px; font-family:monospace;" placeholder="http_port: 80&#10;max_clients: 200"></textarea>
+            </div>
+            
+            <div style="background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:20px;">
+                <div style="font-weight:bold; color:#475569; margin-bottom:10px; font-size:14px;">添加任务 (Task Builder)</div>
+                <div class="row">
+                    <select id="ans-mod" onchange="updateAnsModUI()" style="flex:1">
+                        <option value="apt">安装包 (Apt/Yum)</option>
+                        <option value="service">服务管理 (Service)</option>
+                        <option value="copy">复制文件 (Copy)</option>
+                        <option value="template">模板渲染 (Template)</option>
+                        <option value="file">文件权限/目录 (File)</option>
+                        <option value="lineinfile">修改文件行 (LineInFile)</option>
+                        <option value="unarchive">解压文件 (Unarchive)</option>
+                        <option value="shell">执行命令 (Shell)</option>
+                        <option value="git">Git 代码拉取</option>
+                        <option value="user">用户管理 (User)</option>
+                        <option value="debug">调试信息 (Debug)</option>
+                        <option value="block">任务块 (Block/Rescue)</option>
+                    </select>
+                    <button class="btn success" onclick="addAnsTask()">+ 添加到列表</button>
+                </div>
+                <div id="ans-mod-opts" class="grid-4" style="margin-top:10px">
+                    <!-- Dynamic inputs -->
+                </div>
+                
+                <div style="margin-top:15px; padding-top:15px; border-top:1px dashed #e2e8f0;">
+                    <div style="font-size:12px; font-weight:bold; color:#64748b; margin-bottom:10px;">通用选项 (Common)</div>
+                    <div class="grid-4">
+                        <div><div class="cron-label">注册变量 (Register)</div><input id="am-reg" placeholder="result_var"></div>
+                        <div><div class="cron-label">条件 (When)</div><input id="am-when" placeholder="result_var.changed"></div>
+                        <div><div class="cron-label">通知 (Notify)</div><input id="am-notify" placeholder="Restart Nginx"></div>
+                        <div style="display:flex;align-items:flex-end;padding-bottom:15px"><label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="am-ignore" style="width:18px;height:18px;accent-color:var(--primary)"> 忽略错误</label></div>
+                        <div style="grid-column: span 4"><div class="cron-label">循环 (Loop) - 输入列表 (每行一个) 或 变量 ({{ items }})</div><textarea id="am-loop" style="height:60px; font-family:monospace;" placeholder="- item1&#10;- item2&#10;或 {{ my_list }}"></textarea></div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-bottom:20px">
+                <div class="cron-label">任务列表 (Tasks YAML)</div>
+                <textarea id="ans-tasks" style="height:200px; font-family:monospace;" placeholder="# 点击上方添加任务，或直接在此编辑&#10;- name: Example Task&#10;  debug: msg='Hello'"></textarea>
+            </div>
+            <div style="margin-bottom:20px">
+                <div class="cron-label">处理器 (Handlers YAML)</div>
+                <textarea id="ans-handlers" style="height:100px; font-family:monospace;" placeholder="- name: Restart Nginx&#10;  service: name=nginx state=restarted"></textarea>
+            </div>
+            <button class="btn" style="width:100%; margin-bottom:20px" onclick="doAnsible()">⚙️ 生成 YAML</button>
+            <div class="editor-box"><div class="editor-header"><span>生成结果</span><button class="icon-btn" onclick="copy('ans-res')"><svg><use href="#i-copy"></use></svg></button></div><textarea id="ans-res" class="editor-content" style="height:300px" readonly></textarea></div>
         </div>
 
         <div id="nginx" class="panel">
@@ -3093,7 +3216,211 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
             } catch(e) {}
         }
 
-        window.onload = () => { fillTime(); upCron(); upChmod(true); doTar(); doPs(); doTcpdump(); updateGitUI(); doGit(); doStrace(); doIostat(); doNice(); doLs(); doFirewall(); updateSysUI(); doSystemctl(); updateFindUI(); doFind(); doWhoami(); doRsync(); addStage(); addNginxLocation(); updateUnitUI(); updateGcUI(); doGitCheat(); doAwk(); doSed(); updateK8sUI(); };
+        function updateKcUI() {
+            const act = document.getElementById('kc-action').value;
+            const box = document.getElementById('kc-extra');
+            box.innerHTML = '';
+            box.style.display = 'none';
+
+            if (act === 'scale') {
+                box.style.display = 'grid';
+                box.innerHTML = `<div><div class="cron-label">副本数</div><input type="number" id="kc-rep" value="3" oninput="doK8sCmd()"></div>`;
+            } else if (act === 'port_forward') {
+                box.style.display = 'grid';
+                box.innerHTML = `<div><div class="cron-label">本地端口</div><input type="number" id="kc-lp" value="8080" oninput="doK8sCmd()"></div>
+                                 <div><div class="cron-label">容器端口</div><input type="number" id="kc-rp" value="80" oninput="doK8sCmd()"></div>`;
+            }
+        }
+
+        async function doK8sCmd() {
+            try {
+                let d = await post('/k8s-cmd', {
+                    action: document.getElementById('kc-action').value,
+                    namespace: document.getElementById('kc-ns').value,
+                    resourceType: document.getElementById('kc-type').value,
+                    resourceName: document.getElementById('kc-name').value,
+                    outputFormat: document.getElementById('kc-out').value,
+                    replicas: document.getElementById('kc-rep') ? parseInt(document.getElementById('kc-rep').value) : 0,
+                    localPort: document.getElementById('kc-lp') ? parseInt(document.getElementById('kc-lp').value) : 0,
+                    remotePort: document.getElementById('kc-rp') ? parseInt(document.getElementById('kc-rp').value) : 0
+                });
+                document.getElementById('kc-res').innerText = d.command;
+                document.getElementById('kc-desc').innerText = d.description;
+            } catch(e) {}
+        }
+
+        function updateAnsModUI() {
+            const m = document.getElementById('ans-mod').value;
+            const box = document.getElementById('ans-mod-opts');
+            box.innerHTML = '';
+            
+            if(m === 'apt') {
+                box.innerHTML = `<div><div class="cron-label">包名 (Name)</div><input id="am-name" placeholder="nginx"></div>
+                                 <div><div class="cron-label">状态 (State)</div><select id="am-state"><option value="present">安装 (present)</option><option value="absent">卸载 (absent)</option><option value="latest">最新 (latest)</option></select></div>
+                                 <div style="display:flex;align-items:flex-end;padding-bottom:15px"><label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="am-cache" checked style="width:18px;height:18px;accent-color:var(--primary)"> 更新缓存</label></div>`;
+            } else if(m === 'service') {
+                box.innerHTML = `<div><div class="cron-label">服务名 (Name)</div><input id="am-name" placeholder="nginx"></div>
+                                 <div><div class="cron-label">状态 (State)</div><select id="am-state"><option value="started">启动 (started)</option><option value="stopped">停止 (stopped)</option><option value="restarted">重启 (restarted)</option><option value="reloaded">重载 (reloaded)</option></select></div>
+                                 <div><div class="cron-label">开机自启</div><select id="am-en"><option value="yes">是 (yes)</option><option value="no">否 (no)</option></select></div>`;
+            } else if(m === 'copy' || m === 'template') {
+                box.innerHTML = `<div><div class="cron-label">源文件 (Src)</div><input id="am-src" placeholder="/local/file.conf"></div>
+                                 <div><div class="cron-label">目标路径 (Dest)</div><input id="am-dest" placeholder="/etc/file.conf"></div>
+                                 <div><div class="cron-label">权限 (Mode)</div><input id="am-mode" placeholder="0644"></div>
+                                 <div><div class="cron-label">所有者 (Owner)</div><input id="am-owner" placeholder="root"></div>
+                                 <div><div class="cron-label">所属组 (Group)</div><input id="am-group" placeholder="root"></div>
+                                 ${m === 'copy' ? '<div style="display:flex;align-items:flex-end;padding-bottom:15px"><label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="am-backup" style="width:18px;height:18px;accent-color:var(--primary)"> 备份原文件</label></div>' : ''}`;
+            } else if(m === 'file') {
+                box.innerHTML = `<div><div class="cron-label">路径 (Path)</div><input id="am-path" placeholder="/var/www"></div>
+                                 <div><div class="cron-label">状态 (State)</div><select id="am-state"><option value="directory">目录 (directory)</option><option value="file">文件 (file)</option><option value="touch">创建 (touch)</option><option value="absent">删除 (absent)</option></select></div>
+                                 <div><div class="cron-label">所有者 (Owner)</div><input id="am-owner" placeholder="www-data"></div>
+                                 <div><div class="cron-label">权限 (Mode)</div><input id="am-mode" placeholder="0755"></div>
+                                 <div style="display:flex;align-items:flex-end;padding-bottom:15px"><label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="am-recurse" style="width:18px;height:18px;accent-color:var(--primary)"> 递归 (Recurse)</label></div>`;
+            } else if(m === 'lineinfile') {
+                box.innerHTML = `<div><div class="cron-label">文件路径 (Path)</div><input id="am-path" placeholder="/etc/hosts"></div>
+                                 <div style="grid-column:span 3"><div class="cron-label">行内容 (Line)</div><input id="am-line" placeholder="127.0.0.1 localhost"></div>
+                                 <div style="grid-column:span 2"><div class="cron-label">正则匹配 (Regexp, 可选)</div><input id="am-regexp" placeholder="^127\.0\.0\.1"></div>
+                                 <div><div class="cron-label">状态</div><select id="am-state"><option value="present">存在 (present)</option><option value="absent">缺席 (absent)</option></select></div>`;
+            } else if(m === 'unarchive') {
+                box.innerHTML = `<div><div class="cron-label">源文件 (Src)</div><input id="am-src" placeholder="https://example.com/file.tar.gz"></div>
+                                 <div><div class="cron-label">目标目录 (Dest)</div><input id="am-dest" placeholder="/opt/"></div>
+                                 <div style="display:flex;align-items:flex-end;padding-bottom:15px"><label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="am-remote" checked style="width:18px;height:18px;accent-color:var(--primary)"> 远程源 (Remote Src)</label></div>`;
+            } else if(m === 'shell') {
+                box.innerHTML = `<div style="grid-column:span 4"><div class="cron-label">命令 (Command)</div><input id="am-cmd" placeholder="echo 'hello' > /tmp/test"></div>`;
+            } else if(m === 'git') {
+                box.innerHTML = `<div style="grid-column:span 2"><div class="cron-label">仓库 URL (Repo)</div><input id="am-repo" placeholder="https://github.com/user/repo.git"></div>
+                                 <div><div class="cron-label">目标目录 (Dest)</div><input id="am-dest" placeholder="/opt/app"></div>
+                                 <div><div class="cron-label">版本 (Version)</div><input id="am-ver" placeholder="main"></div>`;
+            } else if(m === 'user') {
+                box.innerHTML = `<div><div class="cron-label">用户名 (Name)</div><input id="am-name" placeholder="deploy"></div>
+                                 <div><div class="cron-label">Shell</div><input id="am-shell" value="/bin/bash"></div>
+                                 <div><div class="cron-label">组 (Groups)</div><input id="am-groups" placeholder="sudo,docker"></div>
+                                 <div style="display:flex;align-items:flex-end;padding-bottom:15px"><label style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none"><input type="checkbox" id="am-keygen" style="width:18px;height:18px;accent-color:var(--primary)"> 生成 SSH Key</label></div>`;
+            } else if(m === 'debug') {
+                box.innerHTML = `<div style="grid-column:span 4"><div class="cron-label">消息 (Msg)</div><input id="am-msg" placeholder="System is {{ ansible_os_family }}"></div>`;
+            } else if(m === 'block') {
+                box.innerHTML = `<div style="grid-column:span 4"><div class="cron-label">块名称 (Name)</div><input id="am-name" placeholder="Error Handling Block"></div>
+                                 <div style="grid-column:span 4"><div class="cron-label">主任务列表 (Block Tasks) - YAML格式 (- name: ...)</div><textarea id="am-block-tasks" style="height:80px;font-family:monospace" placeholder="- name: Task 1\n  command: /bin/true"></textarea></div>
+                                 <div style="grid-column:span 4"><div class="cron-label">救援任务 (Rescue) - 可选</div><textarea id="am-rescue-tasks" style="height:60px;font-family:monospace" placeholder="- name: Handle Error\n  debug: msg='Failed'"></textarea></div>
+                                 <div style="grid-column:span 4"><div class="cron-label">总是执行 (Always) - 可选</div><textarea id="am-always-tasks" style="height:60px;font-family:monospace" placeholder="- name: Cleanup\n  file: path=/tmp/x state=absent"></textarea></div>`;
+            }
+        }
+
+        function addAnsTask() {
+            const m = document.getElementById('ans-mod').value;
+            const val = (id) => document.getElementById(id) ? document.getElementById(id).value : '';
+            const chk = (id) => document.getElementById(id) ? document.getElementById(id).checked : false;
+            
+            let t = '';
+
+            if (m === 'block') {
+                t = `- name: ${val('am-name') || 'Block Task'}\n  block:`;
+                const indent = (str) => str.split('\n').map(l => '    ' + l).join('\n');
+                
+                const bTasks = val('am-block-tasks');
+                if(bTasks && bTasks.trim()) {
+                    t += '\n' + indent(bTasks.trim());
+                } else {
+                    t += '\n    - debug: msg="Block task placeholder"';
+                }
+                
+                const rTasks = val('am-rescue-tasks');
+                if(rTasks && rTasks.trim()) {
+                    t += `\n  rescue:\n` + indent(rTasks.trim());
+                }
+                
+                const aTasks = val('am-always-tasks');
+                if(aTasks && aTasks.trim()) {
+                    t += `\n  always:\n` + indent(aTasks.trim());
+                }
+            } else {
+                t = `- name: ${m.charAt(0).toUpperCase() + m.slice(1)} task\n  ${m}:\n`;
+                
+                if(m === 'apt') {
+                    t += `    name: ${val('am-name')}\n    state: ${val('am-state')}`;
+                    if(chk('am-cache')) t += `\n    update_cache: yes`;
+                }
+                else if(m === 'service') t += `    name: ${val('am-name')}\n    state: ${val('am-state')}\n    enabled: ${val('am-en')}`;
+                else if(m === 'copy' || m === 'template') {
+                    t += `    src: ${val('am-src')}\n    dest: ${val('am-dest')}`;
+                    if(val('am-mode')) t += `\n    mode: '${val('am-mode')}'`;
+                    if(val('am-owner')) t += `\n    owner: ${val('am-owner')}`;
+                    if(val('am-group')) t += `\n    group: ${val('am-group')}`;
+                    if(m === 'copy' && chk('am-backup')) t += `\n    backup: yes`;
+                }
+                else if(m === 'file') {
+                    t += `    path: ${val('am-path')}\n    state: ${val('am-state')}`;
+                    if(val('am-owner')) t += `\n    owner: ${val('am-owner')}`;
+                    if(val('am-mode')) t += `\n    mode: '${val('am-mode')}'`;
+                    if(chk('am-recurse')) t += `\n    recurse: yes`;
+                }
+                else if(m === 'lineinfile') {
+                    t += `    path: ${val('am-path')}\n    line: ${val('am-line')}\n    state: ${val('am-state')}`;
+                    if(val('am-regexp')) t += `\n    regexp: '${val('am-regexp')}'`;
+                }
+                else if(m === 'unarchive') {
+                    t += `    src: ${val('am-src')}\n    dest: ${val('am-dest')}`;
+                    if(chk('am-remote')) t += `\n    remote_src: yes`;
+                }
+                else if(m === 'shell') t += `    cmd: ${val('am-cmd')}`;
+                else if(m === 'git') {
+                    t += `    repo: ${val('am-repo')}\n    dest: ${val('am-dest')}`;
+                    if(val('am-ver')) t += `\n    version: ${val('am-ver')}`;
+                }
+                else if(m === 'user') {
+                    t += `    name: ${val('am-name')}\n    shell: ${val('am-shell')}\n    groups: ${val('am-groups')}`;
+                    if(chk('am-keygen')) t += `\n    generate_ssh_key: yes`;
+                }
+                else if(m === 'debug') {
+                    t += `    msg: "${val('am-msg')}"`;
+                }
+            }
+            
+            // Common options
+            if(val('am-reg')) t += `\n  register: ${val('am-reg')}`;
+            if(val('am-when')) t += `\n  when: ${val('am-when')}`;
+            if(val('am-notify')) t += `\n  notify: ${val('am-notify')}`;
+            if(chk('am-ignore')) t += `\n  ignore_errors: yes`;
+            
+            if(val('am-loop')) {
+                const l = val('am-loop').trim();
+                if(l.startsWith('{{') || l.startsWith('[')) {
+                    t += `\n  loop: ${l}`;
+                } else {
+                    t += `\n  loop:`;
+                    l.split('\n').forEach(line => {
+                        if(line.trim()) {
+                            t += `\n    - ${line.trim().replace(/^- /, '')}`;
+                        }
+                    });
+                }
+            }
+
+            const area = document.getElementById('ans-tasks');
+            area.value = (area.value ? area.value + '\n\n' : '') + t;
+        }
+
+        async function doAnsible() {
+            // 如果任务列表为空，自动添加当前构建器中的任务
+            const tasksArea = document.getElementById('ans-tasks');
+            if (!tasksArea.value.trim()) {
+                addAnsTask();
+            }
+
+            try {
+                let d = await post('/ansible', {
+                    play_name: document.getElementById('ans-name').value,
+                    hosts: document.getElementById('ans-hosts').value,
+                    become: document.getElementById('ans-become').checked,
+                    gather_facts: document.getElementById('ans-facts').checked,
+                    vars: document.getElementById('ans-vars').value,
+                    tasks: document.getElementById('ans-tasks').value,
+                    handlers: document.getElementById('ans-handlers').value
+                });
+                document.getElementById('ans-res').value = d.result;
+            } catch(e) {}
+        }
+
+        window.onload = () => { fillTime(); upCron(); upChmod(true); doTar(); doPs(); doTcpdump(); updateGitUI(); doGit(); doStrace(); doIostat(); doNice(); doLs(); doFirewall(); updateSysUI(); doSystemctl(); updateFindUI(); doFind(); doWhoami(); doRsync(); addStage(); addNginxLocation(); updateUnitUI(); updateGcUI(); doGitCheat(); doAwk(); doSed(); updateK8sUI(); updateAnsModUI(); };
     </script>
 </body>
 </html>
