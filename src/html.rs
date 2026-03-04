@@ -374,6 +374,7 @@ pub fn get_homepage() -> &'static str {
                     <li><a class="link" onclick="nav('diff', this)"><span class="icon">⚖️</span>文本对比</a></li>
                     <li><a class="link" onclick="nav('regex', this)"><span class="icon">🔍</span>正则表达式生成</a></li>
                     <li><a class="link" onclick="nav('dockerfile', this)"><span class="icon">🐳</span>Dockerfile 生成</a></li>
+                    <li><a class="link" onclick="nav('k8s', this)"><span class="icon">☸️</span>K8s YAML 生成</a></li>
                     <li><a class="link" onclick="nav('nginx', this)"><span class="icon">🔧</span>Nginx 配置</a></li>
                     <li><a class="link" onclick="nav('curl', this)"><span class="icon">🔌</span>cURL 生成器</a></li>
                 </ul>
@@ -1496,6 +1497,148 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
             <div class="editor-box">
                 <div class="editor-header"><span>生成结果</span><button class="icon-btn" onclick="copy('df-res')"><svg><use href="#i-copy"></use></svg></button></div>
                 <textarea id="df-res" class="editor-content" style="height:300px" readonly></textarea>
+            </div>
+        </div>
+
+        <div id="k8s" class="panel">
+            <h2>Kubernetes YAML 生成</h2>
+            <div class="row">
+                <div class="cron-label" style="margin-right:10px">资源类型:</div>
+                <select id="k8s-kind" onchange="updateK8sUI()" style="flex:1">
+                    <option value="Deployment">Deployment (部署)</option>
+                    <option value="Service">Service (服务)</option>
+                    <option value="Ingress">Ingress (路由)</option>
+                    <option value="CronJob">CronJob (定时任务)</option>
+                    <option value="ConfigMap">ConfigMap (配置)</option>
+                    <option value="Secret">Secret (机密)</option>
+                </select>
+            </div>
+
+            <div class="grid-4" style="margin-bottom:15px">
+                <div><div class="cron-label">名称 (Name)</div><input id="k8s-name" value="app-name"></div>
+                <div><div class="cron-label">命名空间 (Namespace)</div><input id="k8s-ns" value="default"></div>
+                <div id="k8s-img-box" style="grid-column: span 2"><div class="cron-label">镜像 (Image)</div><input id="k8s-image" value="nginx:latest"></div>
+            </div>
+
+            <!-- Deployment / CronJob Options -->
+            <div id="k8s-workload-opts" class="grid-4" style="margin-bottom:15px">
+                <div><div class="cron-label">副本数 (Replicas)</div><input type="number" id="k8s-rep" value="1"></div>
+                <div><div class="cron-label">端口 (Port)</div><input type="number" id="k8s-port" value="80"></div>
+                <div><div class="cron-label">拉取策略</div><select id="k8s-pull"><option value="IfNotPresent">IfNotPresent</option><option value="Always">Always</option></select></div>
+                <div><div class="cron-label">重启策略</div><select id="k8s-restart"><option value="Always">Always</option><option value="OnFailure">OnFailure</option></select></div>
+            </div>
+
+            <!-- Resources -->
+            <div id="k8s-res-opts" style="margin-bottom:15px; display:none; background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0;">
+                <div style="font-size:12px; font-weight:bold; margin-bottom:10px; color:#64748b">资源限制 (Resources)</div>
+                <div class="grid-4">
+                    <div><div class="cron-label">CPU Request</div><input id="k8s-cpu-r" placeholder="100m"></div>
+                    <div><div class="cron-label">Mem Request</div><input id="k8s-mem-r" placeholder="128Mi"></div>
+                    <div><div class="cron-label">CPU Limit</div><input id="k8s-cpu-l" placeholder="500m"></div>
+                    <div><div class="cron-label">Mem Limit</div><input id="k8s-mem-l" placeholder="512Mi"></div>
+                </div>
+            </div>
+
+            <!-- Service Options -->
+            <div id="k8s-svc-opts" class="grid-4" style="margin-bottom:15px; display:none">
+                <div><div class="cron-label">类型 (Type)</div><select id="k8s-svc-type"><option value="ClusterIP">ClusterIP</option><option value="NodePort">NodePort</option><option value="LoadBalancer">LoadBalancer</option></select></div>
+                <div><div class="cron-label">服务端口</div><input type="number" id="k8s-svc-port" value="80"></div>
+                <div><div class="cron-label">目标端口</div><input type="number" id="k8s-target-port" value="80"></div>
+            </div>
+
+            <!-- Ingress Options -->
+            <div id="k8s-ing-opts" class="grid-4" style="margin-bottom:15px; display:none">
+                <div style="grid-column: span 2"><div class="cron-label">域名 (Host)</div><input id="k8s-host" value="example.com"></div>
+                <div style="grid-column: span 2"><div class="cron-label">路径 (Path)</div><input id="k8s-path" value="/"></div>
+            </div>
+
+            <!-- CronJob Options -->
+            <div id="k8s-cron-opts" style="margin-bottom:15px; display:none">
+                <div class="cron-label">调度周期 (Schedule)</div><input id="k8s-schedule" value="*/1 * * * *">
+            </div>
+
+            <!-- Env / Data -->
+            <div id="k8s-env-box" style="margin-bottom:20px">
+                <div class="cron-label" id="k8s-env-lbl">环境变量 (Key=Value, 每行一个)</div>
+                <textarea id="k8s-env" style="height:100px; font-family:monospace;" placeholder="DB_HOST=localhost&#10;DB_PORT=5432"></textarea>
+            </div>
+
+            <button class="btn" style="width:100%; margin-bottom:20px" onclick="doK8s()">⚙️ 生成 YAML</button>
+            
+            <div class="editor-box">
+                <div class="editor-header"><span>生成结果</span><button class="icon-btn" onclick="copy('k8s-res')"><svg><use href="#i-copy"></use></svg></button></div>
+                <textarea id="k8s-res" class="editor-content" style="height:300px" readonly></textarea>
+            </div>
+        </div>
+
+        <div id="k8s" class="panel">
+            <h2>Kubernetes YAML 生成</h2>
+            <div class="row">
+                <div class="cron-label" style="margin-right:10px">资源类型:</div>
+                <select id="k8s-kind" onchange="updateK8sUI()" style="flex:1">
+                    <option value="Deployment">Deployment (部署)</option>
+                    <option value="Service">Service (服务)</option>
+                    <option value="Ingress">Ingress (路由)</option>
+                    <option value="CronJob">CronJob (定时任务)</option>
+                    <option value="ConfigMap">ConfigMap (配置)</option>
+                    <option value="Secret">Secret (机密)</option>
+                </select>
+            </div>
+
+            <div class="grid-4" style="margin-bottom:15px">
+                <div><div class="cron-label">名称 (Name)</div><input id="k8s-name" value="app-name"></div>
+                <div><div class="cron-label">命名空间 (Namespace)</div><input id="k8s-ns" value="default"></div>
+                <div id="k8s-img-box" style="grid-column: span 2"><div class="cron-label">镜像 (Image)</div><input id="k8s-image" value="nginx:latest"></div>
+            </div>
+
+            <!-- Deployment / CronJob Options -->
+            <div id="k8s-workload-opts" class="grid-4" style="margin-bottom:15px">
+                <div><div class="cron-label">副本数 (Replicas)</div><input type="number" id="k8s-rep" value="1"></div>
+                <div><div class="cron-label">端口 (Port)</div><input type="number" id="k8s-port" value="80"></div>
+                <div><div class="cron-label">拉取策略</div><select id="k8s-pull"><option value="IfNotPresent">IfNotPresent</option><option value="Always">Always</option></select></div>
+                <div><div class="cron-label">重启策略</div><select id="k8s-restart"><option value="Always">Always</option><option value="OnFailure">OnFailure</option></select></div>
+            </div>
+
+            <!-- Resources -->
+            <div id="k8s-res-opts" style="margin-bottom:15px; display:none; background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0;">
+                <div style="font-size:12px; font-weight:bold; margin-bottom:10px; color:#64748b">资源限制 (Resources)</div>
+                <div class="grid-4">
+                    <div><div class="cron-label">CPU Request</div><input id="k8s-cpu-r" placeholder="100m"></div>
+                    <div><div class="cron-label">Mem Request</div><input id="k8s-mem-r" placeholder="128Mi"></div>
+                    <div><div class="cron-label">CPU Limit</div><input id="k8s-cpu-l" placeholder="500m"></div>
+                    <div><div class="cron-label">Mem Limit</div><input id="k8s-mem-l" placeholder="512Mi"></div>
+                </div>
+            </div>
+
+            <!-- Service Options -->
+            <div id="k8s-svc-opts" class="grid-4" style="margin-bottom:15px; display:none">
+                <div><div class="cron-label">类型 (Type)</div><select id="k8s-svc-type"><option value="ClusterIP">ClusterIP</option><option value="NodePort">NodePort</option><option value="LoadBalancer">LoadBalancer</option></select></div>
+                <div><div class="cron-label">服务端口</div><input type="number" id="k8s-svc-port" value="80"></div>
+                <div><div class="cron-label">目标端口</div><input type="number" id="k8s-target-port" value="80"></div>
+            </div>
+
+            <!-- Ingress Options -->
+            <div id="k8s-ing-opts" class="grid-4" style="margin-bottom:15px; display:none">
+                <div style="grid-column: span 2"><div class="cron-label">域名 (Host)</div><input id="k8s-host" value="example.com"></div>
+                <div style="grid-column: span 2"><div class="cron-label">路径 (Path)</div><input id="k8s-path" value="/"></div>
+            </div>
+
+            <!-- CronJob Options -->
+            <div id="k8s-cron-opts" style="margin-bottom:15px; display:none">
+                <div class="cron-label">调度周期 (Schedule)</div><input id="k8s-schedule" value="*/1 * * * *">
+            </div>
+
+            <!-- Env / Data -->
+            <div id="k8s-env-box" style="margin-bottom:20px">
+                <div class="cron-label" id="k8s-env-lbl">环境变量 (Key=Value, 每行一个)</div>
+                <textarea id="k8s-env" style="height:100px; font-family:monospace;" placeholder="DB_HOST=localhost&#10;DB_PORT=5432"></textarea>
+            </div>
+
+            <button class="btn" style="width:100%; margin-bottom:20px" onclick="doK8s()">⚙️ 生成 YAML</button>
+            
+            <div class="editor-box">
+                <div class="editor-header"><span>生成结果</span><button class="icon-btn" onclick="copy('k8s-res')"><svg><use href="#i-copy"></use></svg></button></div>
+                <textarea id="k8s-res" class="editor-content" style="height:300px" readonly></textarea>
             </div>
         </div>
 
@@ -2687,6 +2830,65 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
                 document.getElementById('df-res').value = d.result;
             } catch(e) {}
         }
+
+        function updateK8sUI() {
+            const k = document.getElementById('k8s-kind').value;
+            const show = (id, v) => document.getElementById(id).style.display = v ? (id.includes('grid')||id.includes('opts') ? 'grid' : 'block') : 'none';
+            
+            show('k8s-img-box', false); show('k8s-workload-opts', false); show('k8s-res-opts', false);
+            show('k8s-svc-opts', false); show('k8s-ing-opts', false); show('k8s-cron-opts', false); show('k8s-env-box', false);
+
+            if(['Deployment', 'CronJob'].includes(k)) {
+                show('k8s-img-box', true); show('k8s-workload-opts', true); show('k8s-res-opts', true); show('k8s-env-box', true);
+                document.getElementById('k8s-env-lbl').innerText = '环境变量 (Key=Value)';
+            }
+            if(k === 'CronJob') show('k8s-cron-opts', true);
+            if(k === 'Service') show('k8s-svc-opts', true);
+            if(k === 'Ingress') {
+                show('k8s-ing-opts', true);
+                document.getElementById('k8s-svc-opts').style.display = 'grid'; // Reuse for port
+                document.getElementById('k8s-svc-type').parentElement.style.display = 'none';
+                document.getElementById('k8s-target-port').parentElement.style.display = 'none';
+            }
+            if(['ConfigMap', 'Secret'].includes(k)) {
+                show('k8s-env-box', true);
+                document.getElementById('k8s-env-lbl').innerText = '数据键值对 (Key=Value)';
+            }
+        }
+
+        async function doK8s() {
+            try {
+                const envLines = document.getElementById('k8s-env').value.split('\n');
+                const env = [];
+                envLines.forEach(l => {
+                    const p = l.indexOf('=');
+                    if(p > 0) env.push({key: l.substring(0, p).trim(), value: l.substring(p+1).trim()});
+                });
+
+                let d = await post('/k8s-yaml', {
+                    kind: document.getElementById('k8s-kind').value,
+                    name: document.getElementById('k8s-name').value,
+                    namespace: document.getElementById('k8s-ns').value,
+                    image: document.getElementById('k8s-image').value,
+                    replicas: parseInt(document.getElementById('k8s-rep').value) || 1,
+                    port: parseInt(document.getElementById('k8s-port').value) || 80,
+                    targetPort: parseInt(document.getElementById('k8s-target-port').value) || 80,
+                    serviceType: document.getElementById('k8s-svc-type').value,
+                    ingressHost: document.getElementById('k8s-host').value,
+                    ingressPath: document.getElementById('k8s-path').value,
+                    pullPolicy: document.getElementById('k8s-pull').value,
+                    restartPolicy: document.getElementById('k8s-restart').value,
+                    schedule: document.getElementById('k8s-schedule').value,
+                    cpuLimit: document.getElementById('k8s-cpu-l').value,
+                    memoryLimit: document.getElementById('k8s-mem-l').value,
+                    cpuRequest: document.getElementById('k8s-cpu-r').value,
+                    memoryRequest: document.getElementById('k8s-mem-r').value,
+                    env: env
+                });
+                document.getElementById('k8s-res').value = d.result;
+            } catch(e) {}
+        }
+
         function toggleSslInputs() {
             document.getElementById('ssl-inputs').style.display = document.getElementById('ng-ssl').checked ? 'grid' : 'none';
         }
@@ -2891,7 +3093,7 @@ enabled = true"></textarea></div><div class="editor-box"><div class="editor-head
             } catch(e) {}
         }
 
-        window.onload = () => { fillTime(); upCron(); upChmod(true); doTar(); doPs(); doTcpdump(); updateGitUI(); doGit(); doStrace(); doIostat(); doNice(); doLs(); doFirewall(); updateSysUI(); doSystemctl(); updateFindUI(); doFind(); doWhoami(); doRsync(); addStage(); addNginxLocation(); updateUnitUI(); updateGcUI(); doGitCheat(); doAwk(); doSed(); };
+        window.onload = () => { fillTime(); upCron(); upChmod(true); doTar(); doPs(); doTcpdump(); updateGitUI(); doGit(); doStrace(); doIostat(); doNice(); doLs(); doFirewall(); updateSysUI(); doSystemctl(); updateFindUI(); doFind(); doWhoami(); doRsync(); addStage(); addNginxLocation(); updateUnitUI(); updateGcUI(); doGitCheat(); doAwk(); doSed(); updateK8sUI(); };
     </script>
 </body>
 </html>

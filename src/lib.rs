@@ -1,4 +1,5 @@
 use worker::*;
+use serde::{Deserialize, Serialize};
 
 mod converters;
 mod generators;
@@ -470,6 +471,227 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
                 &data.not_contains,
             ))
         })
+        .post_async("/api/k8s-yaml", |mut req, _| async move {
+            let data: K8sRequest = req.json().await?;
+            let yaml = generate_k8s_yaml(&data);
+            Response::from_json(&GenericResponse { result: yaml })
+        })
         .run(req, env)
         .await
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct K8sRequest {
+    #[serde(default = "default_kind")]
+    kind: String,
+    #[serde(default = "default_name")]
+    name: String,
+    #[serde(default = "default_namespace")]
+    namespace: String,
+    #[serde(default = "default_image")]
+    image: String,
+    #[serde(default = "default_replicas")]
+    replicas: i32,
+    #[serde(default = "default_port")]
+    port: i32,
+    #[serde(default = "default_target_port")]
+    target_port: i32,
+    #[serde(default = "default_service_type")]
+    service_type: String,
+    #[serde(default = "default_ingress_host")]
+    ingress_host: String,
+    #[serde(default = "default_ingress_path")]
+    ingress_path: String,
+    #[serde(default = "default_pull_policy")]
+    pull_policy: String,
+    cpu_limit: Option<String>,
+    memory_limit: Option<String>,
+    cpu_request: Option<String>,
+    memory_request: Option<String>,
+    #[serde(default)]
+    env: Vec<K8sEnvVar>,
+    #[serde(default = "default_schedule")]
+    schedule: String,
+    #[serde(default = "default_restart_policy")]
+    restart_policy: String,
+}
+
+#[derive(Deserialize, Serialize)]
+struct K8sEnvVar {
+    key: String,
+    value: String,
+}
+
+fn default_kind() -> String { "Deployment".to_string() }
+fn default_name() -> String { "app-name".to_string() }
+fn default_namespace() -> String { "default".to_string() }
+fn default_image() -> String { "nginx:latest".to_string() }
+fn default_replicas() -> i32 { 1 }
+fn default_port() -> i32 { 80 }
+fn default_target_port() -> i32 { 80 }
+fn default_service_type() -> String { "ClusterIP".to_string() }
+fn default_ingress_host() -> String { "example.com".to_string() }
+fn default_ingress_path() -> String { "/".to_string() }
+fn default_pull_policy() -> String { "IfNotPresent".to_string() }
+fn default_schedule() -> String { "*/1 * * * *".to_string() }
+fn default_restart_policy() -> String { "Always".to_string() }
+
+fn generate_k8s_yaml(data: &K8sRequest) -> String {
+    let mut yaml = String::new();
+    
+    if data.kind == "Deployment" {
+        yaml.push_str(&format!(r#"apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {}
+  namespace: {}
+  labels:
+    app: {}
+spec:
+  replicas: {}
+  selector:
+    matchLabels:
+      app: {}
+  template:
+    metadata:
+      labels:
+        app: {}
+    spec:
+      containers:
+      - name: {}
+        image: {}
+        imagePullPolicy: {}
+        ports:
+        - containerPort: {}
+"#, data.name, data.namespace, data.name, data.replicas, data.name, data.name, data.name, data.image, data.pull_policy, data.port));
+
+        if data.cpu_limit.is_some() || data.memory_limit.is_some() || data.cpu_request.is_some() || data.memory_request.is_some() {
+            yaml.push_str("        resources:\n");
+            if data.cpu_limit.is_some() || data.memory_limit.is_some() {
+                yaml.push_str("          limits:\n");
+                if let Some(ref cpu) = data.cpu_limit { yaml.push_str(&format!("            cpu: {}\n", cpu)); }
+                if let Some(ref mem) = data.memory_limit { yaml.push_str(&format!("            memory: {}\n", mem)); }
+            }
+            if data.cpu_request.is_some() || data.memory_request.is_some() {
+                yaml.push_str("          requests:\n");
+                if let Some(ref cpu) = data.cpu_request { yaml.push_str(&format!("            cpu: {}\n", cpu)); }
+                if let Some(ref mem) = data.memory_request { yaml.push_str(&format!("            memory: {}\n", mem)); }
+            }
+        }
+
+        if !data.env.is_empty() {
+            yaml.push_str("        env:\n");
+            for e in &data.env {
+                if !e.key.is_empty() && !e.value.is_empty() {
+                    yaml.push_str(&format!("        - name: {}\n          value: \"{}\"\n", e.key, e.value));
+                }
+            }
+        }
+        
+        yaml.push_str(&format!("      restartPolicy: {}", data.restart_policy));
+
+    } else if data.kind == "Service" {
+        yaml.push_str(&format!(r#"apiVersion: v1
+kind: Service
+metadata:
+  name: {}
+  namespace: {}
+  labels:
+    app: {}
+spec:
+  type: {}
+  selector:
+    app: {}
+  ports:
+  - protocol: TCP
+    port: {}
+    targetPort: {}
+"#, data.name, data.namespace, data.name, data.service_type, data.name, data.port, data.target_port));
+
+    } else if data.kind == "Ingress" {
+        yaml.push_str(&format!(r#"apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {}
+  namespace: {}
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - host: {}
+    http:
+      paths:
+      - path: {}
+        pathType: Prefix
+        backend:
+          service:
+            name: {}
+            port:
+              number: {}
+"#, data.name, data.namespace, data.ingress_host, data.ingress_path, data.name, data.port));
+
+    } else if data.kind == "CronJob" {
+        yaml.push_str(&format!(r#"apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {}
+  namespace: {}
+spec:
+  schedule: "{}"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: {}
+            image: {}
+            imagePullPolicy: {}
+            command:
+            - /bin/sh
+            - -c
+            - "echo Hello Kubernetes"
+          restartPolicy: OnFailure
+"#, data.name, data.namespace, data.schedule, data.name, data.image, data.pull_policy));
+    } else if data.kind == "ConfigMap" {
+        yaml.push_str(&format!(r#"apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {}
+  namespace: {}
+data:
+"#, data.name, data.namespace));
+        if !data.env.is_empty() {
+            for e in &data.env {
+                if !e.key.is_empty() && !e.value.is_empty() {
+                    yaml.push_str(&format!("  {}: \"{}\"\n", e.key, e.value));
+                }
+            }
+        } else {
+            yaml.push_str("  config.json: |\n    {\n      \"key\": \"value\"\n    }");
+        }
+    } else if data.kind == "Secret" {
+        yaml.push_str(&format!(r#"apiVersion: v1
+kind: Secret
+metadata:
+  name: {}
+  namespace: {}
+type: Opaque
+data:
+  # Data should be base64 encoded
+"#, data.name, data.namespace));
+        if !data.env.is_empty() {
+            use base64::{Engine as _, engine::general_purpose};
+            for e in &data.env {
+                if !e.key.is_empty() && !e.value.is_empty() {
+                    let b64 = general_purpose::STANDARD.encode(&e.value);
+                    yaml.push_str(&format!("  {}: {}\n", e.key, b64));
+                }
+            }
+        } else {
+            yaml.push_str("  username: YWRtaW4=");
+        }
+    }
+
+    yaml
 }

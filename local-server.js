@@ -1700,6 +1700,372 @@ app.post('/api/sed', (req, res) => {
   res.json({ command: cmd });
 });
 
+app.post('/api/k8s-yaml', (req, res) => {
+  const {
+    kind = 'Deployment',
+    name = 'app-name',
+    namespace = 'default',
+    image = 'nginx:latest',
+    replicas = 1,
+    port = 80,
+    targetPort = 80,
+    serviceType = 'ClusterIP',
+    ingressHost = 'example.com',
+    ingressPath = '/',
+    pullPolicy = 'IfNotPresent',
+    cpuLimit,
+    memoryLimit,
+    cpuRequest,
+    memoryRequest,
+    env = [],
+    schedule = '*/1 * * * *',
+    restartPolicy = 'Always'
+  } = req.body;
+
+  let yaml = '';
+
+  if (kind === 'Deployment') {
+    yaml = `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${name}
+  namespace: ${namespace}
+  labels:
+    app: ${name}
+spec:
+  replicas: ${parseInt(replicas)}
+  selector:
+    matchLabels:
+      app: ${name}
+  template:
+    metadata:
+      labels:
+        app: ${name}
+    spec:
+      containers:
+      - name: ${name}
+        image: ${image}
+        imagePullPolicy: ${pullPolicy}
+        ports:
+        - containerPort: ${parseInt(port)}
+`;
+
+    if (cpuLimit || memoryLimit || cpuRequest || memoryRequest) {
+      yaml += `        resources:\n`;
+      if (cpuLimit || memoryLimit) {
+        yaml += `          limits:\n`;
+        if (cpuLimit) yaml += `            cpu: ${cpuLimit}\n`;
+        if (memoryLimit) yaml += `            memory: ${memoryLimit}\n`;
+      }
+      if (cpuRequest || memoryRequest) {
+        yaml += `          requests:\n`;
+        if (cpuRequest) yaml += `            cpu: ${cpuRequest}\n`;
+        if (memoryRequest) yaml += `            memory: ${memoryRequest}\n`;
+      }
+    }
+
+    if (Array.isArray(env) && env.length > 0) {
+      yaml += `        env:\n`;
+      env.forEach(e => {
+        if (e.key && e.value) {
+          yaml += `        - name: ${e.key}\n          value: "${e.value}"\n`;
+        }
+      });
+    }
+
+    yaml += `      restartPolicy: ${restartPolicy}`;
+
+  } else if (kind === 'Service') {
+    yaml = `apiVersion: v1
+kind: Service
+metadata:
+  name: ${name}
+  namespace: ${namespace}
+  labels:
+    app: ${name}
+spec:
+  type: ${serviceType}
+  selector:
+    app: ${name}
+  ports:
+  - protocol: TCP
+    port: ${parseInt(port)}
+    targetPort: ${parseInt(targetPort)}
+`;
+
+  } else if (kind === 'Ingress') {
+    yaml = `apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ${name}
+  namespace: ${namespace}
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - host: ${ingressHost}
+    http:
+      paths:
+      - path: ${ingressPath}
+        pathType: Prefix
+        backend:
+          service:
+            name: ${name}
+            port:
+              number: ${parseInt(port)}
+`;
+
+  } else if (kind === 'CronJob') {
+    yaml = `apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ${name}
+  namespace: ${namespace}
+spec:
+  schedule: "${schedule}"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: ${name}
+            image: ${image}
+            imagePullPolicy: ${pullPolicy}
+            command:
+            - /bin/sh
+            - -c
+            - "echo Hello Kubernetes"
+          restartPolicy: OnFailure
+`;
+  } else if (kind === 'ConfigMap') {
+    yaml = `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ${name}
+  namespace: ${namespace}
+data:
+`;
+    if (Array.isArray(env) && env.length > 0) {
+      env.forEach(e => {
+        if (e.key && e.value) {
+          yaml += `  ${e.key}: "${e.value}"\n`;
+        }
+      });
+    } else {
+      yaml += `  config.json: |\n    {\n      "key": "value"\n    }`;
+    }
+  } else if (kind === 'Secret') {
+    yaml = `apiVersion: v1
+kind: Secret
+metadata:
+  name: ${name}
+  namespace: ${namespace}
+type: Opaque
+data:
+  # Data should be base64 encoded
+`;
+    if (Array.isArray(env) && env.length > 0) {
+      env.forEach(e => {
+        if (e.key && e.value) {
+          try {
+            const b64 = Buffer.from(e.value).toString('base64');
+            yaml += `  ${e.key}: ${b64}\n`;
+          } catch (err) {
+            yaml += `  ${e.key}: ${e.value} # Error encoding\n`;
+          }
+        }
+      });
+    } else {
+      yaml += `  username: YWRtaW4=`;
+    }
+  }
+
+  res.json({ result: yaml });
+});
+
+app.post('/api/k8s-yaml', (req, res) => {
+  const {
+    kind = 'Deployment',
+    name = 'app-name',
+    namespace = 'default',
+    image = 'nginx:latest',
+    replicas = 1,
+    port = 80,
+    targetPort = 80,
+    serviceType = 'ClusterIP',
+    ingressHost = 'example.com',
+    ingressPath = '/',
+    pullPolicy = 'IfNotPresent',
+    cpuLimit,
+    memoryLimit,
+    cpuRequest,
+    memoryRequest,
+    env = [],
+    schedule = '*/1 * * * *',
+    restartPolicy = 'Always'
+  } = req.body;
+
+  let yaml = '';
+
+  if (kind === 'Deployment') {
+    yaml = `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${name}
+  namespace: ${namespace}
+  labels:
+    app: ${name}
+spec:
+  replicas: ${parseInt(replicas)}
+  selector:
+    matchLabels:
+      app: ${name}
+  template:
+    metadata:
+      labels:
+        app: ${name}
+    spec:
+      containers:
+      - name: ${name}
+        image: ${image}
+        imagePullPolicy: ${pullPolicy}
+        ports:
+        - containerPort: ${parseInt(port)}
+`;
+
+    if (cpuLimit || memoryLimit || cpuRequest || memoryRequest) {
+      yaml += `        resources:\n`;
+      if (cpuLimit || memoryLimit) {
+        yaml += `          limits:\n`;
+        if (cpuLimit) yaml += `            cpu: ${cpuLimit}\n`;
+        if (memoryLimit) yaml += `            memory: ${memoryLimit}\n`;
+      }
+      if (cpuRequest || memoryRequest) {
+        yaml += `          requests:\n`;
+        if (cpuRequest) yaml += `            cpu: ${cpuRequest}\n`;
+        if (memoryRequest) yaml += `            memory: ${memoryRequest}\n`;
+      }
+    }
+
+    if (Array.isArray(env) && env.length > 0) {
+      yaml += `        env:\n`;
+      env.forEach(e => {
+        if (e.key && e.value) {
+          yaml += `        - name: ${e.key}\n          value: "${e.value}"\n`;
+        }
+      });
+    }
+
+    yaml += `      restartPolicy: ${restartPolicy}`;
+
+  } else if (kind === 'Service') {
+    yaml = `apiVersion: v1
+kind: Service
+metadata:
+  name: ${name}
+  namespace: ${namespace}
+  labels:
+    app: ${name}
+spec:
+  type: ${serviceType}
+  selector:
+    app: ${name}
+  ports:
+  - protocol: TCP
+    port: ${parseInt(port)}
+    targetPort: ${parseInt(targetPort)}
+`;
+
+  } else if (kind === 'Ingress') {
+    yaml = `apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ${name}
+  namespace: ${namespace}
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - host: ${ingressHost}
+    http:
+      paths:
+      - path: ${ingressPath}
+        pathType: Prefix
+        backend:
+          service:
+            name: ${name}
+            port:
+              number: ${parseInt(port)}
+`;
+
+  } else if (kind === 'CronJob') {
+    yaml = `apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ${name}
+  namespace: ${namespace}
+spec:
+  schedule: "${schedule}"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: ${name}
+            image: ${image}
+            imagePullPolicy: ${pullPolicy}
+            command:
+            - /bin/sh
+            - -c
+            - "echo Hello Kubernetes"
+          restartPolicy: OnFailure
+`;
+  } else if (kind === 'ConfigMap') {
+    yaml = `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ${name}
+  namespace: ${namespace}
+data:
+`;
+    if (Array.isArray(env) && env.length > 0) {
+      env.forEach(e => {
+        if (e.key && e.value) {
+          yaml += `  ${e.key}: "${e.value}"\n`;
+        }
+      });
+    } else {
+      yaml += `  config.json: |\n    {\n      "key": "value"\n    }`;
+    }
+  } else if (kind === 'Secret') {
+    yaml = `apiVersion: v1
+kind: Secret
+metadata:
+  name: ${name}
+  namespace: ${namespace}
+type: Opaque
+data:
+  # Data should be base64 encoded
+`;
+    if (Array.isArray(env) && env.length > 0) {
+      env.forEach(e => {
+        if (e.key && e.value) {
+          try {
+            const b64 = Buffer.from(e.value).toString('base64');
+            yaml += `  ${e.key}: ${b64}\n`;
+          } catch (err) {
+            yaml += `  ${e.key}: ${e.value} # Error encoding\n`;
+          }
+        }
+      });
+    } else {
+      yaml += `  username: YWRtaW4=`;
+    }
+  }
+
+  res.json({ result: yaml });
+});
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`Local server running at http://localhost:${PORT}`);
@@ -1717,4 +2083,5 @@ app.listen(PORT, () => {
   console.log('- POST /api/curl: Curl command builder');
   console.log('- POST /api/unit-convert: Unit converter');
   console.log('- POST /api/git-cmd: Git command helper');
+  console.log('- POST /api/k8s-yaml: Kubernetes YAML generator');
 });
